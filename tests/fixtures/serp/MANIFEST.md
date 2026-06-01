@@ -12,3 +12,19 @@
 | 08-kit_embrague_chevrolet_onix.html | "kit embrague chevrolet onix" | 1460957 | none | 2026-06-01 22:08 |
 | 09-termostato_corsa_classic.html | "termostato corsa classic" | 1163604 | none | 2026-06-01 22:09 |
 | 10-balatas_brembo_toyota_hilux.html | "balatas brembo toyota hilux" | 862943 | none | 2026-06-01 22:10 |
+
+## Aggregate
+
+| total_fixtures | with_any_marker | mean_size_kb | min_size_kb | max_size_kb |
+|----------------|-----------------|--------------|-------------|-------------|
+| 10 | 0 | 1233.6 | 842.7 | 1470.0 |
+
+D3_VERDICT: clean — no consent interstitial observed on N=10 cold-context fetches
+
+## Aggregate
+
+| total_fixtures | with_any_marker | mean_size_kb | min_size_kb | max_size_kb |
+|----------------|-----------------|--------------|-------------|-------------|
+| 10 | 0 | 1233.6 | 842.7 | 1470.0 |
+
+D3_VERDICT: clean — no consent interstitial observed on N=10 cold-context fetches
