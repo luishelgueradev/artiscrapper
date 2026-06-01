@@ -1,0 +1,29 @@
+[04_death_modes] Starting death-mode provocation...
+[04_death_modes] Artifacts dir: /home/luis/proyectos/artiscrapper/.claude/worktrees/agent-a8b2d905355317879/artifacts/spike
+
+[04_death_modes] === Death mode 1: SIGKILL ===
+[04_death_modes] Launcher PID: 45511
+[04_death_modes] Sending SIGKILL to chromium pid 45527
+[04_death_modes] SIGKILL flip_lag=0.5 final_connected=False
+
+[04_death_modes] === Death mode 2: SIGSTOP ===
+[04_death_modes] Sending SIGSTOP to chromium pid 46258
+[04_death_modes] Sending SIGCONT to resume 46258
+[04_death_modes] SIGSTOP flip_lag=NEVER_FLIPPED final_connected=True
+
+[04_death_modes] === Death mode 3: Network drop ===
+[04_death_modes] Network drop: | network_drop     | n/a     | n/a         | not_in_docker — skipped per 01-RESEARCH.md line 356 |
+
+[04_death_modes] === Death mode 4: OOM ===
+[04_death_modes] OOM: | OOM              | n/a     | n/a         | not_in_docker — skipped per 01-RESEARCH.md line 355 |
+
+[04_death_modes] Death mode table:
+| mode             | flipped | lag_seconds | notes |
+|------------------|---------|-------------|-------|
+| SIGKILL          | YES     | 0.5s        | is_connected() flipped after SIGKILL |
+| SIGSTOP          | NO      | NEVER       | Phase 2 needs secondary heartbeat (page.evaluate) — SIGSTOP doesn't flip |
+| network_drop     | n/a     | n/a         | not_in_docker — skipped per 01-RESEARCH.md line 356 |
+| OOM              | n/a     | n/a         | not_in_docker — skipped per 01-RESEARCH.md line 355 |
+[04_death_modes] Done — artifacts in /home/luis/proyectos/artiscrapper/.claude/worktrees/agent-a8b2d905355317879/artifacts/spike
+[04_death_modes] Cleanup: killing any remaining Cloak/Chromium processes...
+[04_death_modes] Cleanup done.
