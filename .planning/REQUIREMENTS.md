@@ -5,7 +5,7 @@
 
 ## v1 Requirements
 
-Requerimientos para llegar a "production-ready" (PRD Fase 0 → Fase 1 → Fase 2). Cada uno mapea a una fase del roadmap.
+Requerimientos para llegar a "production-ready" (GSD Phase 1 → Phase 2 → Phase 3, mapeado del PRD Fase 0/1/2). Cada uno mapea a una fase del roadmap.
 
 ### Search Pipeline (SEARCH)
 
@@ -91,9 +91,9 @@ Requerimientos para llegar a "production-ready" (PRD Fase 0 → Fase 1 → Fase 
 
 ## v2 Requirements
 
-Deferidos a futuro release. Tracked pero NO en current roadmap (PRD Fase 4 territory).
+Deferidos a futuro release. Tracked pero NO en current roadmap (PRD Fase 4 territory = GSD Phase 5).
 
-### Suppliers (SUP) — Fase 4 diferido
+### Suppliers (SUP) — GSD Phase 5 diferido
 
 - **SUP-01**: Adapter directo per-supplier (Mayorista Frog, Distribuidora Romero, Casa Susy, etc.) — solo si la lista curada de Google no alcanza
 - **SUP-02**: Per-supplier auth flow (algunos B2B requieren login)
@@ -106,14 +106,14 @@ Deferidos a futuro release. Tracked pero NO en current roadmap (PRD Fase 4 terri
 
 ### Advanced Observability (ADV)
 
-- **ADV-01**: Grafana dashboard con per-host visit stats
-- **ADV-02**: Sentry-sdk para uncaught exceptions
-- **ADV-03**: Loki para log aggregation
-- **ADV-04**: Distributed tracing (OpenTelemetry)
+- **ADV-01**: Grafana dashboard con per-host visit stats — GSD Phase 4 si trigger
+- **ADV-02**: Sentry-sdk para uncaught exceptions — GSD Phase 3 (ya wired)
+- **ADV-03**: Loki para log aggregation — GSD Phase 4 si trigger
+- **ADV-04**: Distributed tracing (OpenTelemetry) — GSD Phase 4 condicional
 
 ### Multi-tenant (MULTI)
 
-- **MULTI-01**: Authentication API-key por consumer
+- **MULTI-01**: Authentication API-key por consumer — GSD Phase 5 si trigger
 - **MULTI-02**: Per-consumer rate-limit + quota
 - **MULTI-03**: Per-consumer billing/usage telemetry
 
@@ -145,27 +145,76 @@ Explícitamente excluido. Documentado para prevenir scope creep.
 
 ## Traceability
 
-Qué fase cubre qué requirement. Updated por gsd-roadmapper en la próxima task.
+Phase mapping per `.planning/ROADMAP.md`. **GSD Phase numbering:** 1 = Spike (PRD Fase 0), 2 = MVP (PRD Fase 1), 3 = Robustness (PRD Fase 2), 4 = Operations (PRD Fase 3), 5 = Expansion (PRD Fase 4).
 
 | Requirement | Phase | Status |
 |---|---|---|
-| SEARCH-01..08 | Fase 1 | Pending |
-| LLM-01..08 | Fase 1 | Pending |
-| VISIT-01..08 | Fase 1 | Pending |
-| FRESH-01..04 | Fase 1 | Pending |
-| CACHE-01..05 | Fase 1 | Pending |
-| BROWSER-01..05 | Fase 1 | Pending |
-| DEPLOY-01..06 | Fase 1 | Pending |
-| OBS-01..06 | Fase 1 | Pending |
-| OBS-07 (Prometheus) | Fase 2 | Pending |
-| NF-01..04 | Fase 1 | Pending |
+| SEARCH-01 | Phase 2 (MVP) | Pending |
+| SEARCH-02 | Phase 2 (MVP) | Pending |
+| SEARCH-03 | Phase 2 (MVP) | Pending |
+| SEARCH-04 | Phase 2 (MVP) | Pending |
+| SEARCH-05 | Phase 2 (MVP) | Pending |
+| SEARCH-06 | Phase 2 (MVP) | Pending |
+| SEARCH-07 | Phase 2 (MVP) | Pending |
+| SEARCH-08 | Phase 2 (MVP) | Pending |
+| LLM-01 | Phase 2 (MVP) | Pending |
+| LLM-02 | Phase 2 (MVP) | Pending |
+| LLM-03 | Phase 2 (MVP) | Pending |
+| LLM-04 | Phase 2 (MVP) | Pending |
+| LLM-05 | Phase 2 (MVP) | Pending |
+| LLM-06 | Phase 2 (MVP) | Pending |
+| LLM-07 | Phase 2 (MVP) | Pending |
+| LLM-08 | Phase 2 (MVP) | Pending |
+| VISIT-01 | Phase 2 (MVP) | Pending |
+| VISIT-02 | Phase 2 (MVP) | Pending |
+| VISIT-03 | Phase 2 (MVP) | Pending |
+| VISIT-04 | Phase 2 (MVP) | Pending |
+| VISIT-05 | Phase 2 (MVP) | Pending |
+| VISIT-06 | Phase 2 (MVP) | Pending |
+| VISIT-07 | Phase 2 (MVP) | Pending |
+| VISIT-08 | Phase 2 (MVP) | Pending |
+| FRESH-01 | Phase 2 (MVP) | Pending |
+| FRESH-02 | Phase 2 (MVP) | Pending |
+| FRESH-03 | Phase 2 (MVP) | Pending |
+| FRESH-04 | Phase 2 (MVP) | Pending |
+| CACHE-01 | Phase 2 (MVP) | Pending |
+| CACHE-02 | Phase 2 (MVP) | Pending |
+| CACHE-03 | Phase 2 (MVP) | Pending |
+| CACHE-04 | Phase 2 (MVP) | Pending |
+| CACHE-05 | Phase 2 (MVP) | Pending |
+| BROWSER-01 | Phase 2 (MVP) | Pending |
+| BROWSER-02 | Phase 2 (MVP) | Pending |
+| BROWSER-03 | Phase 2 (MVP) | Pending |
+| BROWSER-04 | Phase 2 (MVP) | Pending |
+| BROWSER-05 | Phase 2 (MVP) | Pending |
+| DEPLOY-01 | Phase 2 (MVP) | Pending |
+| DEPLOY-02 | Phase 2 (MVP) | Pending |
+| DEPLOY-03 | Phase 2 (MVP) | Pending |
+| DEPLOY-04 | Phase 2 (MVP) | Pending |
+| DEPLOY-05 | Phase 2 (MVP) | Pending |
+| DEPLOY-06 | Phase 2 (MVP) | Pending |
+| OBS-01 | Phase 2 (MVP) | Pending |
+| OBS-02 | Phase 2 (MVP) | Pending |
+| OBS-03 | Phase 2 (MVP) | Pending |
+| OBS-04 | Phase 2 (MVP) | Pending |
+| OBS-05 | Phase 2 (MVP) | Pending |
+| OBS-06 | Phase 2 (MVP) | Pending |
+| OBS-07 | Phase 3 (Robustness) | Pending |
+| NF-01 | Phase 2 (MVP) | Pending |
+| NF-02 | Phase 2 (MVP) | Pending |
+| NF-03 | Phase 2 (MVP) | Pending |
+| NF-04 | Phase 2 (MVP) | Pending |
+
+**Phase 1 (Spike)** carries zero v1 requirements by design — it produces fixtures + `SPIKE.md` Go/No-Go gating Phase 2 lock-in of D1, D3, D4, D8, D10, D11, D12 from `research/SUMMARY.md`.
 
 **Coverage:**
 - v1 requirements: 53 total (en SEARCH/LLM/VISIT/FRESH/CACHE/BROWSER/DEPLOY/OBS/NF)
-- v2 requirements: 13 total (SUP/MELI/ADV/MULTI — todos diferidos)
-- Mapped to phases: 53 (preliminar — gsd-roadmapper refinará)
+- v2 requirements: 13 total (SUP/MELI/ADV/MULTI — todos diferidos a GSD Phase 4-5)
+- Mapped to phases: **53/53 (100%)**
 - Unmapped: 0
+- Orphans: 0
+- Duplicates: 0
 
 ---
 *Requirements defined: 2026-06-01 from PRD v0.1 + research synthesis (5 docs in `.planning/research/`)*
-*Last updated: 2026-06-01 after initialization*
+*Last updated: 2026-06-01 by gsd-roadmapper (Traceability mapped to GSD Phase 1-5 per `.planning/ROADMAP.md`)*
