@@ -1,0 +1,16 @@
+[01_verify_cloak_tag] Checking internet reachability...
+[01_verify_cloak_tag] Hub reachable — OK
+[01_verify_cloak_tag] Fetching tag info from Docker Hub...
+[01_verify_cloak_tag] Raw JSON saved to /home/luis/proyectos/artiscrapper/.claude/worktrees/agent-a8b2d905355317879/artifacts/spike/cloak_tag.json
+TAG_EXISTS
+updated: 2026-05-26
+size_bytes: 581915063
+arches: ['amd64', 'arm64', 'unknown', 'unknown']
+[01_verify_cloak_tag] Hub tag: OK (TAG_EXISTS)
+[01_verify_cloak_tag] Fetching latest GitHub release...
+chromium_release_tag: chromium-v146.0.7680.177.5
+chromium_release_date: 2026-05-21
+[01_verify_cloak_tag] GitHub release info appended
+[01_verify_cloak_tag] Chromium release tag observed: chromium-v146.0.7680.177.5
+[01_verify_cloak_tag] Chromium tag: OK (matches chromium-v146.0.7680.177.*)
+[01_verify_cloak_tag] D1 VERIFIED: Hub tag exists AND chromium tag matches expected series

@@ -1,0 +1,42 @@
+Cloak Python import path: cloakbrowser.launch_async
+[02_cloak_smoke] Output dir: /home/luis/proyectos/artiscrapper/.claude/worktrees/agent-a8b2d905355317879/tests/fixtures/serp
+[02_cloak_smoke] Existing fixtures: 0
+[02_cloak_smoke] browser.is_connected(): True
+[02_cloak_smoke] Capturing 10 queries (need ≥5 total)
+[02_cloak_smoke] ctx id: 138214533706288 — context 1
+[01] q='pelota playera quico' interstitial_hits=[] bytes=1036776 (1012KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214555378512 — context 2
+[02] q='filtro aceite ford focus' interstitial_hits=[] bytes=1481880 (1447KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214533905168 — context 3
+[03] q='amortiguador trasero peugeot 208' interstitial_hits=[] bytes=1427316 (1394KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214534257568 — context 4
+[04] q='buja ngk bosch' interstitial_hits=[] bytes=1202344 (1174KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214534264864 — context 5
+[05] q='correa distribucion fiat cronos' interstitial_hits=[] bytes=1156826 (1130KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214449752272 — context 6
+[06] q='disco freno renault sandero' interstitial_hits=[] bytes=1505289 (1470KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214533772928 — context 7
+[07] q='rotula direccion vw gol' interstitial_hits=[] bytes=1333986 (1303KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214450227104 — context 8
+[08] q='kit embrague chevrolet onix' interstitial_hits=[] bytes=1460957 (1427KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214558728784 — context 9
+[09] q='termostato corsa classic' interstitial_hits=[] bytes=1163604 (1136KB)
+[02_cloak_smoke] Throttle: sleeping 60s between queries...
+[02_cloak_smoke] ctx id: 138214449768784 — context 10
+[10] q='balatas brembo toyota hilux' interstitial_hits=[] bytes=862943 (843KB)
+[02_cloak_smoke] Total fixtures on disk: 10
+[02_cloak_smoke] Running cookie isolation test...
+[02_cloak_smoke] Cookie test — ctx1 id: using browser 138214533904848
+ctx1 cookies after set: ['__Secure-STRP', 'AEC', 'NID', 'artispike_marker']
+ctx2 cookies after nav: ['AEC', '__Secure-STRP', 'NID']
+ctx2 request Cookie header: (none)
+cookie isolation: PASS
+[02_cloak_smoke] PASS: 10 fixtures captured, cookie isolation OK

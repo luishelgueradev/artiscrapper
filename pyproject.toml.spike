@@ -1,0 +1,15 @@
+[project]
+name = "artiscrapper-spike"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "cloakbrowser==0.3.31",
+    "httpx[http2]==0.28.1",
+    "httpx-sse>=0.4.0",
+    "selectolax==0.4.10",
+    "pydantic>=2.0",
+]
+
+# NOTE: This is a THROWAWAY spike-only dependency list.
+# Phase 2 will define the real pyproject.toml with production deps.
+# The .spike extension is deliberate — prevents tooling from auto-picking this up.

@@ -1,0 +1,26 @@
+# pws=0 Consent Interstitial Summary
+# Generated: 2026-06-01 22:13 UTC
+
+total_fixtures: 10
+with_any_marker: 0
+per_marker_hit_counts: {}
+mean_size_kb: 1233.6
+min_size_kb: 842.7
+max_size_kb: 1470.0
+likely_interstitial_count: 0
+
+## Per-fixture
+| filename | size_kb | h3_count | marker_hits |
+|----------|---------|----------|-------------|
+| 01-pelota_playera_quico.html | 1012.5 | 8 | none |
+| 02-filtro_aceite_ford_focus.html | 1447.1 | 8 | none |
+| 03-amortiguador_trasero_peugeot_208.html | 1393.9 | 9 | none |
+| 04-buja_ngk_bosch.html | 1174.2 | 7 | none |
+| 05-correa_distribucion_fiat_cronos.html | 1129.7 | 8 | none |
+| 06-disco_freno_renault_sandero.html | 1470.0 | 8 | none |
+| 07-rotula_direccion_vw_gol.html | 1302.7 | 8 | none |
+| 08-kit_embrague_chevrolet_onix.html | 1426.7 | 8 | none |
+| 09-termostato_corsa_classic.html | 1136.3 | 7 | none |
+| 10-balatas_brembo_toyota_hilux.html | 842.7 | 10 | none |
+
+D3_VERDICT: clean — no consent interstitial observed on N=10 cold-context fetches

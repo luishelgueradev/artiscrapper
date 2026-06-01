@@ -1,0 +1,5 @@
+BROWSER_LAUNCHED pid_placeholder — is_connected: True
+CHROMIUM_PID=45527
+IS_CONNECTED_FLIPPED: True -> False at t=0.5s
+FLIP_LAG_SECONDS=0.5
+FINAL_IS_CONNECTED=False

@@ -1,0 +1,6 @@
+| mode             | flipped | lag_seconds | notes |
+|------------------|---------|-------------|-------|
+| SIGKILL          | YES     | 0.5s        | is_connected() flipped after SIGKILL |
+| SIGSTOP          | NO      | NEVER       | Phase 2 needs secondary heartbeat (page.evaluate) — SIGSTOP doesn't flip |
+| network_drop     | n/a     | n/a         | not_in_docker — skipped per 01-RESEARCH.md line 356 |
+| OOM              | n/a     | n/a         | not_in_docker — skipped per 01-RESEARCH.md line 355 |

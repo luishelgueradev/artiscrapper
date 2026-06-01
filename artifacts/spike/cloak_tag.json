@@ -1,0 +1,71 @@
+{
+  "creator": 40180121,
+  "id": 1178089400,
+  "images": [
+    {
+      "architecture": "amd64",
+      "features": "",
+      "variant": null,
+      "digest": "sha256:61dee1b490ee8f74b040bc02c3d5384c7f64420b87ccaa26a33f213d07df3f73",
+      "os": "linux",
+      "os_features": "",
+      "os_version": null,
+      "size": 581915063,
+      "status": "active",
+      "last_pulled": "2026-06-01T21:55:59.790141365Z",
+      "last_pushed": "2026-05-26T18:42:46.264952643Z"
+    },
+    {
+      "architecture": "arm64",
+      "features": "",
+      "variant": null,
+      "digest": "sha256:b3e469ff18041c14ec44bb8291a7c4fcf5db26f3e61f98cde903d93e0ec7b20d",
+      "os": "linux",
+      "os_features": "",
+      "os_version": null,
+      "size": 571487377,
+      "status": "active",
+      "last_pulled": "2026-06-01T21:23:38.796155595Z",
+      "last_pushed": "2026-05-26T18:42:45.240007408Z"
+    },
+    {
+      "architecture": "unknown",
+      "features": "",
+      "variant": null,
+      "digest": "sha256:e16d5556083f0b84fa07957eb89bf58c6d77b3ef4da34ba39414af1529227d1e",
+      "os": "unknown",
+      "os_features": "",
+      "os_version": null,
+      "size": 8675859,
+      "status": "active",
+      "last_pulled": "2026-06-01T21:56:00.047691927Z",
+      "last_pushed": "2026-05-26T18:42:45.838049709Z"
+    },
+    {
+      "architecture": "unknown",
+      "features": "",
+      "variant": null,
+      "digest": "sha256:568d3572d5b1d3797a777e11053b939be4e957d6e2073db766a9dfc73db33b87",
+      "os": "unknown",
+      "os_features": "",
+      "os_version": null,
+      "size": 8666869,
+      "status": "active",
+      "last_pulled": "2026-06-01T21:23:38.937259929Z",
+      "last_pushed": "2026-05-26T18:42:46.816233793Z"
+    }
+  ],
+  "last_updated": "2026-05-26T18:42:47.504463Z",
+  "last_updater": 40180121,
+  "last_updater_username": "cloakhq",
+  "name": "0.3.31",
+  "repository": 30297752,
+  "full_size": 581915063,
+  "v2": true,
+  "tag_status": "active",
+  "tag_last_pulled": "2026-06-01T21:56:00.047691927Z",
+  "tag_last_pushed": "2026-05-26T18:42:47.504463Z",
+  "media_type": "application/vnd.oci.image.index.v1+json",
+  "content_type": "image",
+  "digest": "sha256:440907001735f4e2764e614e1b40c40bc0317d34b83c0315897dea443cbe5fcc"
+}
