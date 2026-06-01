@@ -161,13 +161,17 @@ D12 empirically gated: 9/10 fixtures jsonld-sufficient, 0/10 needing extruct. Ph
 ## Risks
 
 - SIGSTOP does not flip `is_connected()` — Phase 2 plan 02-01 must add `page.evaluate("1")` periodic heartbeat (~10s interval) in `_recycle_browser_loop`, alongside the existing `is_connected()` check. Without this, a STOPped Chromium process would be treated as healthy.
-- __
-- __
+- Cloak/Chromium runtime needs `libnspr4` + `libnss3` system packages — not bundled in the cloakbrowser wheel. On the WSL2 spike host these were absent and the run only worked via a local `.deb` extract + `LD_LIBRARY_PATH` override. Phase 2 Dockerfile (plan 02-01) MUST install both via `apt-get install -y libnspr4 libnss3` in the runtime image; otherwise the container will boot but every browser launch will fail with `error while loading shared libraries: libnspr4.so`.
+- Per-host PDP URL discovery cannot rely on slug-guessing — Wave 3 confirmed that 8/10 falabella + frog + romero "guessed" PDP URLs returned 404 (not WAF blocks: real 404). Phase 2 plan 02-02 (visit pass) MUST consume real PDP URLs surfaced by the Google SERP cascade, never construct catalog URLs from search terms. Slug-guessing would inflate `visit_failed` rate to ~70% with no anti-bot signal in the failure.
 
-**Status: GO | NO-GO | NEEDS-PIVOT**
+**Status: NEEDS-PIVOT**
+
+Phase 2 inherits 3 concrete must-do items (heartbeat, system deps, real-URL discovery). None are blocking, all are mechanical to address during the relevant Phase 2 plans.
 
 ---
 
 ## Overall Status
 
-**Status: GO | NO-GO | NEEDS-PIVOT**
+**Status: NEEDS-PIVOT**
+
+All empirical work landed and every decision gate (D1, D3, D4, D8, D10, D11, D12) locked with measurements. Phase 2 can proceed, but the §Risks list above contains three concrete pivots that the Phase 2 plans MUST address — the SIGSTOP heartbeat in plan 02-01, the libnspr4/libnss3 system deps in plan 02-01's Dockerfile, and real-URL discovery in plan 02-02. No re-spiking required.
