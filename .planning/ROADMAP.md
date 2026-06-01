@@ -19,7 +19,7 @@ The architecture survives research with **13 LOCKED deviations** from the PRD (D
 - Integer phases (1, 2, 3, 4, 5): Planned milestone work mapping PRD Fase 0..4
 - Decimal phases (e.g. 2.1): Reserved for urgent INSERTED work post-execution
 
-- [ ] **Phase 1: Spike & Empirical Validation** - Answer 12 Phase-0-spike questions, capture fixtures, deliver Go/No-Go (no production code)
+- [x] **Phase 1: Spike & Empirical Validation** - Answer 12 Phase-0-spike questions, capture fixtures, deliver Go/No-Go (no production code) (completed 2026-06-01)
 - [ ] **Phase 2: MVP** - Endpoint `/search` end-to-end with all 53 v1 requirements, Docker image, tests, validated against PRD §10 success criteria
 - [ ] **Phase 3: Robustness** - Prometheus metrics, Sentry, rate-limit per API-key, challenge detection + backoff, degraded mode, fixture-based integration suite
 - [ ] **Phase 4: Production Operations** - Grafana dashboards, Loki, cache invalidation endpoint, tracing — only on demand from prod telemetry
@@ -53,7 +53,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Visit/extraction spike: capture 10 AR catalog PDP fixtures headed (Mercadolibre excluded per VISIT-08), classify via hand-rolled JSON-LD + OG + microdata + regex extractor (RESEARCH §Pattern 5), measure Falabella + Frog + Romero httpx 403 rates with DEFAULT_HEADERS (D11), make D12 decision (hand-roll vs extruct). Output: SPIKE.md §Visit + §D12 Decision + tests/fixtures/catalog/.
+- [x] 01-03-PLAN.md — Visit/extraction spike: capture 10 AR catalog PDP fixtures headed (Mercadolibre excluded per VISIT-08), classify via hand-rolled JSON-LD + OG + microdata + regex extractor (RESEARCH §Pattern 5), measure Falabella + Frog + Romero httpx 403 rates with DEFAULT_HEADERS (D11), make D12 decision (hand-roll vs extruct). Output: SPIKE.md §Visit + §D12 Decision + tests/fixtures/catalog/.
 
 **Cross-cutting constraints:**
 
@@ -162,7 +162,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Spike & Empirical Validation | 2/3 | In Progress|  |
+| 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
 | 2. MVP | 0/3 | Not started | - |
 | 3. Robustness | 0/2 | Not started | - |
 | 4. Production Operations | 0/TBD | Not started | - |
