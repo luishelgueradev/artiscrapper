@@ -1,0 +1,13 @@
+D12_DECISION: HAND-ROLL
+
+# Rationale
+9/10 fixtures classified as jsonld-sufficient or og-only (threshold ≥8). Hand-rolled selectolax extractor covers the AR catalog surface. Phase 2 plan 02-02 ships hand-rolled VISIT-06 unchanged.
+
+# Aggregate counts
+sufficient (jsonld+og): 9/10
+needs-extruct (microdata+blob): 0/10
+jsonld-sufficient: 9
+og-only: 0
+microdata-only: 0
+regex-fallback: 1
+blob-JS-only: 0
