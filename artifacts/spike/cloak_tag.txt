@@ -1,0 +1,6 @@
+TAG_EXISTS
+updated: 2026-05-26
+size_bytes: 581915063
+arches: ['amd64', 'arm64', 'unknown', 'unknown']
+chromium_release_tag: chromium-v146.0.7680.177.5
+chromium_release_date: 2026-05-21

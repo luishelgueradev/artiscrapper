@@ -1,0 +1,36 @@
+Resolved 20 packages in 1.67s
+Downloading selectolax (2.3MiB)
+Downloading playwright (45.3MiB)
+ Downloaded selectolax
+ Downloaded playwright
+Prepared 5 packages in 1.49s
+Installed 20 packages in 728ms
+ + annotated-types==0.7.0
+ + anyio==4.13.0
+ + certifi==2026.5.20
+ + cloakbrowser==0.3.31
+ + greenlet==3.5.1
+ + h11==0.16.0
+ + h2==4.3.0
+ + hpack==4.1.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + httpx-sse==0.4.3
+ + hyperframe==6.1.0
+ + idna==3.17
+ + playwright==1.60.0
+ + pydantic==2.13.4
+ + pydantic-core==2.46.4
+ + pyee==13.0.1
+ + selectolax==0.4.10
+ + typing-extensions==4.15.0
+ + typing-inspection==0.4.2
+module path: /home/luis/proyectos/artiscrapper/.claude/worktrees/agent-a8b2d905355317879/.venv/lib/python3.13/site-packages/cloakbrowser/__init__.py
+exports: ['CHROMIUM_VERSION', 'ProxySettings', 'binary_info', 'browser', 'build_args', 'check_for_update', 'clear_cache', 'config', 'download', 'ensure_binary', 'get_default_stealth_args', 'human', 'launch', 'launch_async', 'launch_context', 'launch_context_async', 'launch_persistent_context', 'launch_persistent_context_async', 'maybe_resolve_geoip']
+
+  CloakBrowser — stealth Chromium for automation
+  https://github.com/CloakHQ/CloakBrowser
+
+  Donate?  https://ko-fi.com/cloakhq
+  Star us if CloakBrowser helps your project!
+

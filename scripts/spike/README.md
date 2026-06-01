@@ -84,10 +84,18 @@ Use `bash scripts/spike/run_all.sh` to run all scripts sequentially with banners
 
 ---
 
-## Anti-uvloop Reminder (D6)
+## Asyncio Policy (D6)
 
-Every Python spike script uses `asyncio.run(main())`. **NEVER use `uvloop.install()` or `uvloop.EventLoopPolicy()`.**
-Cloak/Playwright's subprocess pipe protocol is incompatible with uvloop (D6 — PROJECT.md §Constraints).
+Every Python spike script uses `asyncio.run(main())`. D6 (PROJECT.md §Constraints) mandates the standard asyncio event loop.
+The uv-loop package is incompatible with Cloak/Playwright's subprocess pipe protocol — do not install or import it.
+
+```python
+# Correct — always:
+# asyncio.run(main())
+
+# FORBIDDEN:
+# import uvloop; uvloop.install()  # breaks Playwright pipe
+```
 
 ---
 
