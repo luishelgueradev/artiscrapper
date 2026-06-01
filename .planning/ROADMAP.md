@@ -45,7 +45,7 @@ The architecture survives research with **13 LOCKED deviations** from the PRD (D
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Wave 0 scaffolding + Browser spike: verify Cloak Docker tag 0.3.31 (D1), confirm pws=0 doesn't trigger consent interstitial (D3), verify Browser.is_connected() catches Cloak death modes (D8), confirm ephemeral new_context() cookie isolation, capture 5-10 raw SERP HTML fixtures (AC-3). Output: SPIKE.md §Browser + tests/fixtures/serp/.
+- [x] 01-01-PLAN.md — Wave 0 scaffolding + Browser spike: verify Cloak Docker tag 0.3.31 (D1), confirm pws=0 doesn't trigger consent interstitial (D3), verify Browser.is_connected() catches Cloak death modes (D8), confirm ephemeral new_context() cookie isolation, capture 5-10 raw SERP HTML fixtures (AC-3). Output: SPIKE.md §Browser + tests/fixtures/serp/.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -162,7 +162,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Spike & Empirical Validation | 0/3 | Not started | - |
+| 1. Spike & Empirical Validation | 1/3 | In Progress|  |
 | 2. MVP | 0/3 | Not started | - |
 | 3. Robustness | 0/2 | Not started | - |
 | 4. Production Operations | 0/TBD | Not started | - |
