@@ -1,0 +1,26 @@
+## 403-rate probe: host=frog (N=10, 30s spacing, httpx + DEFAULT_HEADERS)
+
+| N=10 | host | 200 | 403 | 5xx | timeout | other |
+|------|------|-----|-----|-----|---------|-------|
+| 10   | frog | 5 | 0 | 0 | 0 | 5 |
+
+conclusion: success rate=50% (5/10) under bare httpx + Chromium-146 headers
+
+## Per-attempt detail
+
+| 01 | 200 | 0.25s | 297015B | https://mayoristafrog.com.ar/product/pelota-quico-ty32004/ |
+| 02 | 200 | 0.14s | 306376B | https://mayoristafrog.com.ar/product/juego-damas-22cm-dama08 |
+| 03 | 200 | 0.14s | 306216B | https://mayoristafrog.com.ar/product/muneca-pepona-50cm-la50 |
+| 04 | 200 | 0.16s | 303455B | https://mayoristafrog.com.ar/product/set-unas-x-4ps-st9889/ |
+| 05 | 200 | 0.15s | 303124B | https://mayoristafrog.com.ar/product/varita-luminosa-x-35cm- |
+| 06 | 404 | 0.54s | 252152B | https://mayoristafrog.com.ar/product/peluche-conejo-25cm-ph2 |
+| 07 | 404 | 0.53s | 252180B | https://mayoristafrog.com.ar/product/globos-numeros-dorados- |
+| 08 | 404 | 0.52s | 252196B | https://mayoristafrog.com.ar/product/pelota-football-america |
+| 09 | 404 | 0.58s | 252176B | https://mayoristafrog.com.ar/product/raqueta-playa-madera-38 |
+| 10 | 404 | 0.59s | 252140B | https://mayoristafrog.com.ar/product/pelota-mini-quico-ty30/ |
+
+D11_VERDICT_frog: borderline
+
+NOTE: The 50% success rate is NOT due to WAF/403 blocking — it's product existence: the first 5 URLs (from captured fixture) returned 200 (real products); the last 5 URLs (guessed slugs) returned 404 (product not found). Zero 403s were observed on any URL. The actual D11 finding is: mayoristafrog.com.ar does NOT block httpx with 403/WAF. The borderline verdict is an artifact of URL quality in the probe list, NOT of WAF blocking. Phase 2 implication: Frog is accessible via httpx + DEFAULT_HEADERS; the visit_failed risk from WAF is LOW for this host.
+
+Phase 2 implication: borderline verdict due to URL quality (5 real 200s, 5 guessed 404s), NOT WAF blocking. Mayoristafrog httpx access is clean — no 403/WAF observed. curl-cffi deferral to Phase 3 confirmed for this host.

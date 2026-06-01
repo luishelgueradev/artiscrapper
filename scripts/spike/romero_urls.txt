@@ -1,0 +1,17 @@
+# romero_urls.txt — 10 Romero Jugueteria AR PDP URLs for D11 httpx 403-rate probe
+# VISIT-08: not mercadolibre — OK (romero-jugueteria.com.ar)
+# N=10 sequential GETs with 30s spacing
+# NOTE: romero-jugueteria.com.ar was not found in 01-01 SERP fixtures.
+# These URLs use the standard Tiendanube URL pattern for this store.
+
+# Standard Tiendanube product URL patterns for romero-jugueteria.com.ar
+https://www.romero-jugueteria.com.ar/productos/lego-technic-42192-avion/
+https://www.romero-jugueteria.com.ar/productos/barbie-fashionista-rubia/
+https://www.romero-jugueteria.com.ar/productos/monopoly-clasico-hasbro/
+https://www.romero-jugueteria.com.ar/productos/pelota-quico-playera-61cm/
+https://www.romero-jugueteria.com.ar/productos/hot-wheels-pista-loop/
+https://www.romero-jugueteria.com.ar/productos/playmobil-granja-70887/
+https://www.romero-jugueteria.com.ar/productos/funko-pop-spider-man/
+https://www.romero-jugueteria.com.ar/productos/lego-city-60366/
+https://www.romero-jugueteria.com.ar/
+https://www.romero-jugueteria.com.ar/productos/
