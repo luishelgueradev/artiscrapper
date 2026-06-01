@@ -1,0 +1,8 @@
+oneshot_elapsed_ms: 405
+oneshot_status: 200
+oneshot_finish_reason: stop
+oneshot_json_parseable: YES
+oneshot_x_model_backend: ollama
+oneshot_x_cost_cents: n/a
+oneshot_usage: {'prompt_tokens': 37, 'completion_tokens': 6, 'total_tokens': 43}
+oneshot_content_preview: {"ok":true}

@@ -1,0 +1,175 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "llama3.2:3b-instruct-q4_K_M",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "qwen2.5-7b-instruct-q4km",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "tools",
+        "json_mode"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "llama3.2-vision:11b-instruct-q4_K_M",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "vision"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "qwen2.5-7b-instruct-awq",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "tools",
+        "json_mode"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "bge-m3-ollama",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "embeddings"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "bge-m3-vllm",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "embeddings"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "gpt-oss:120b-cloud",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "tools",
+        "json_mode"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "gpt-oss:20b-cloud",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "tools",
+        "json_mode"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "chat-local",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "tools",
+        "json_mode"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "vision-local",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "vision"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "bge-reranker-local",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "rerank"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "embed-local",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "embeddings"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    },
+    {
+      "id": "big-cloud",
+      "object": "model",
+      "created": 1780329785,
+      "owned_by": "local-llms",
+      "capabilities": [
+        "chat",
+        "tools",
+        "json_mode"
+      ],
+      "policy": {
+        "cloud_allowed": true
+      }
+    }
+  ]
+}

@@ -46,20 +46,43 @@ SIGSTOP does not flip `Browser.is_connected()` in 30s — Phase 2 plan 02-01 mus
 
 - Router endpoint: `http://127.0.0.1:3210/v1/chat/completions` (OpenAI-compat, bearer-auth)
 - Default chat model: `chat-local` → backend qwen2.5:7b-instruct-q4_K_M via Ollama
-- Health: __
-- JSON mode: `response_format: {type: "json_object"}` returns parseable JSON on first try (rate __/5)
-- TTFT p50: __ ms (over 5 calls, system prompt ~510 tokens, max_tokens=80)
-- TTFT p95: __ ms
-- End-to-end completion p50: __ ms
-- KV-cache reuse across requests: __ (call 1 __ ms, call 2 __ ms, call 3 __ ms)
-- Concurrency:
-  - N=2: __
-  - N=4: __
-  - N=8: __
-- Recommended `LLM_CONCURRENCY` env default for Phase 2: __
-- `tests/fixtures/llm/labelled.jsonl`: __ records, all schema-valid
+- Health: `/healthz` 200 with bearer — OK
+- JSON mode: `response_format: {type: "json_object"}` returns parseable JSON on first try (rate 5/5)
+- TTFT p50: 143 ms (over 5 calls, system prompt ~510 tokens, max_tokens=80, SSE streaming)
+- TTFT p95: 344 ms
+- End-to-end completion p50: 1472 ms
+- KV-cache reuse across requests: OBSERVED (call 1 900ms, call 2 774ms, call 3 705ms — ~14-21% latency drop on repeats; Phase 2 prompt design may benefit from identical system-prompt prefix caching, though full prompt-eval cannot be assumed away at scale)
+- Concurrency (empirical — from artifacts/spike/router_concurrency.txt):
+  - N=2: 2/2 200, 0 429, 0 503, mean=10.25s (first call was model cold-load; model warm for subsequent bursts)
+  - N=4: 4/4 200, 0 429, 0 503, mean=0.81s — queue absorbs cleanly
+  - N=8: 8/8 200, 0 429, 0 503, mean=1.09s — no queue exhaustion
+- Recommended `LLM_CONCURRENCY` env default for Phase 2: **4** (N=2+N=4+N=8 all 200, queue_max_wait_ms=30000 absorbs cleanly; N=2 high-latency outlier was model cold-load, not queue saturation)
+- `tests/fixtures/llm/labelled.jsonl`: 50 records (42 positive, 8 negative), all schema-valid
 
-**Status: GO | NO-GO | NEEDS-PIVOT**
+```
+# Captured artifacts (empirical values — from artifacts/spike/)
+router_summary.txt:
+  endpoint_ok: YES (200 from /healthz with bearer)
+  default_chat_model: chat-local (backend: qwen2.5:7b-instruct-q4_K_M)
+  json_mode_first_try_rate: 5/5
+  ttft_p50_ms: 143
+  ttft_p95_ms: 344
+  end_to_end_p50_ms: 1472
+  kvcache_verdict: OBSERVED (call1=0.90s call2=0.77s call3=0.71s)
+  concurrency_table:
+    N=2: 2/2 200, 0 429, 0 503, mean=10.25s
+    N=4: 4/4 200, 0 429, 0 503, mean=0.81s
+    N=8: 8/8 200, 0 429, 0 503, mean=1.09s
+  recommend_llm_concurrency: 4
+
+router_concurrency.txt: N=2/4/8 status mixes + per-call elapsed (justification data)
+router_ttft.txt: per-call TTFT ms + p50/p95 computations
+router_kvcache.txt: KVCACHE_VERDICT: OBSERVED (call1=0.90s call2=0.77s call3=0.71s)
+```
+
+**Status: GO**
+
+TTFT p95=344ms gives 14.5x headroom against the 5s per-candidate timeout; JSON mode 5/5 first-try; LLM_CONCURRENCY=4 justified by N=2+N=4+N=8 all 200 with no 429/503; 50 schema-valid labelled records committed.
 
 ---
 
