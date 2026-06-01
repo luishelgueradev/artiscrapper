@@ -1,0 +1,17 @@
+# frog_urls.txt — 10 Mayorista Frog AR PDP URLs for D11 httpx 403-rate probe
+# VISIT-08: not mercadolibre — OK (mayoristafrog.com.ar)
+# N=10 sequential GETs with 30s spacing
+
+# Product pages discovered from captured fixture + category browsing
+https://mayoristafrog.com.ar/product/pelota-quico-ty32004/
+https://mayoristafrog.com.ar/product/juego-damas-22cm-dama08/
+https://mayoristafrog.com.ar/product/muneca-pepona-50cm-la503/
+https://mayoristafrog.com.ar/product/set-unas-x-4ps-st9889/
+https://mayoristafrog.com.ar/product/varita-luminosa-x-35cm-no-936/
+
+# Additional Mayorista Frog products (known product slug patterns)
+https://mayoristafrog.com.ar/product/peluche-conejo-25cm-ph200/
+https://mayoristafrog.com.ar/product/globos-numeros-dorados-80cm-gl80/
+https://mayoristafrog.com.ar/product/pelota-football-americano-22cm-fa220/
+https://mayoristafrog.com.ar/product/raqueta-playa-madera-38cm-rq380/
+https://mayoristafrog.com.ar/product/pelota-mini-quico-ty30/

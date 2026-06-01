@@ -1,0 +1,37 @@
+[06_capture_catalog] WARN: only 9 fixtures — need ≥10 for AC-4
+[06_capture_catalog] Loaded 10 URLs (VISIT-08 clean)
+[06_capture_catalog] Browser launched: <Browser type=<BrowserType name=chromium executable_path=/home/luis/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome> version=146.0.7680.177>
+[01] Capturing mayoristafrog_com_ar → https://mayoristafrog.com.ar/product/pelota-quico-ty32004/
+[01]   OK: 283.9KB (status=200)
+[01]   Throttle: sleeping 30s...
+[02] Capturing casasusy_com_ar → https://casasusy.com.ar/productos/pelota-quico-juego-chavo-61cm-playa-inflable-m
+[02]   OK: 630.5KB (status=200)
+[02]   Throttle: sleeping 30s...
+[03] Capturing falabella_com_ar → https://www.falabella.com.ar/falabella-ar/product/151699001/Aceite-Castrol-Edge-
+[03]   OK: 1385.3KB (status=200)
+[03]   Throttle: sleeping 30s...
+[04] Capturing dphidraulica_com_ar → https://dphidraulica.com.ar/productos/kit-x2-amortiguador-trasero-peugeot-208-58
+[04]   OK: 1034.0KB (status=200)
+[04]   Throttle: sleeping 30s...
+[05] Capturing lspalermo_com_ar → https://lspalermo.com.ar/productos/filtro-aceite-ford-focus-1-mondeo-zetec-1-6-1
+[05]   OK: 918.0KB (status=200)
+[05]   Throttle: sleeping 30s...
+[06] Capturing autodo_com_ar → https://www.autodo.com.ar/cofap-gb27622gy/p
+[06]   OK: 813.7KB (status=200)
+[06]   Throttle: sleeping 30s...
+[07] Capturing walmart_com_ar → https://www.walmart.com.ar/aceite-castrol-gtx-ultraclean-15w40-4l/p/20190034
+[07]   ERROR: Error: Page.goto: net::ERR_NAME_NOT_RESOLVED at https://www.walmart.com.ar/aceite-castrol-gtx-ultraclean-15w40-4l/p/20190034
+Ca
+[07]   Throttle: sleeping 30s...
+[08] Capturing martinmorris_ar → https://martinmorris.ar/products/rotula-de-suspension-ambos-lados-816
+[08]   OK: 878.9KB (status=200)
+[08]   Throttle: sleeping 30s...
+[09] Capturing argautopartes_com_ar → https://www.argautopartes.com.ar/productos/kit-x2-amortiguador-trasero-peugeot-2
+[09]   OK: 1137.2KB (status=200)
+[09]   Throttle: sleeping 30s...
+[10] Capturing mipol_com_ar → https://www.mipol.com.ar/productos/Disco-freno-tensa-delantero-ventilado-258mm-r
+[10]   OK: 821.8KB (status=200)
+[06_capture_catalog] Browser closed cleanly
+
+[06_capture_catalog] Done. Total fixtures on disk: 9
+[06_capture_catalog] Captured successfully this run: 9

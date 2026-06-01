@@ -1,0 +1,45 @@
+# catalog_urls.txt — PDP URLs for 01-03 catalog fixture capture
+# One URL per host, in order matching the RESEARCH host table (lines 519-528).
+# VISIT-08 invariant: NO MercadoLibre URLs allowed (any *.mercadolibre domain is forbidden)
+# Lines starting with # are comments. Blank lines ignored.
+#
+# Order: mayoristafrog | casasusy | falabella | romero-jugueteria | tiendanube-sample
+#        vtex-sample (musimundo/garbarino) | walmart-ar | shopify-sample
+#        argautopartes (long-tail AR catalog from SERPs) | mipol (long-tail AR from SERPs)
+
+# 1. mayoristafrog.com.ar — from SERP fixture 01-pelota_playera_quico.html
+https://mayoristafrog.com.ar/product/pelota-quico-ty32004/
+
+# 2. casasusy.com.ar — Tiendanube store, from SERP fixture 01-pelota_playera_quico.html
+https://casasusy.com.ar/productos/pelota-quico-juego-chavo-61cm-playa-inflable-multicolor/
+
+# 3. falabella.com.ar — VTEX/proprietary, known product page (auto parts category)
+# Note: 403 risk on httpx (Akamai WAF) — captured via headed Cloak in this task
+https://www.falabella.com.ar/falabella-ar/product/151699001/Aceite-Castrol-Edge-0W20-1L/151699002
+
+# 4. romero-jugueteria.com.ar — likely Tiendanube, toys/games store
+# substituted with dphidraulica.com.ar which appeared in SERP (Tiendanube-based AR repuesto store)
+# because romero-jugueteria.com.ar URL not found in SERP fixtures
+# # substituted because: romero-jugueteria.com.ar not indexed in 01-01 SERP fixtures; dphidraulica is Tiendanube-based AR store that DID appear in SERP
+https://dphidraulica.com.ar/productos/kit-x2-amortiguador-trasero-peugeot-208-58z91/
+
+# 5. Tiendanube sample (*.mitiendanube.com) — lspalermo.com.ar is Tiendanube-based (appeared in SERP)
+# lspalermo.com.ar confirmed Tiendanube by URL structure and the srsltid= tracking param from Google Shopping
+https://lspalermo.com.ar/productos/filtro-aceite-ford-focus-1-mondeo-zetec-1-6-1-8-2-0-oferta-7g2ei/
+
+# 6. VTEX sample — autodo.com.ar appeared in SERP, VTEX platform (confirmed by /p? URL pattern)
+https://www.autodo.com.ar/cofap-gb27622gy/p
+
+# 7. reps.com.ar — AR auto parts catalog, appeared in SERP for termostato/corsa queries
+# substituted because: walmart.com.ar resolves with ERR_NAME_NOT_RESOLVED (domain defunct as of 2026-06-01)
+https://reps.com.ar/productos/termostato-chevrolet-corsa-nafta-th6764-92j/
+
+# 8. Shopify sample (*.myshopify.com or .ar domain with Shopify) — martinmorris.ar uses Shopify
+# martinmorris.ar appeared in SERP fixtures with /products/ URL pattern (Shopify canonical)
+https://martinmorris.ar/products/rotula-de-suspension-ambos-lados-816
+
+# 9. argautopartes.com.ar — long-tail AR catalog that appeared prominently in SERP fixtures
+https://www.argautopartes.com.ar/productos/kit-x2-amortiguador-trasero-peugeot-208-1-5-8v-allure/
+
+# 10. mipol.com.ar — long-tail AR auto parts, appeared in SERP for multiple queries
+https://www.mipol.com.ar/productos/Disco-freno-tensa-delantero-ventilado-258mm-renault-sandero-stepway-logan-ii-14-/

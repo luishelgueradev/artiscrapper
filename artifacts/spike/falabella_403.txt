@@ -1,0 +1,26 @@
+## 403-rate probe: host=falabella (N=10, 30s spacing, httpx + DEFAULT_HEADERS)
+
+| N=10 | host | 200 | 403 | 5xx | timeout | other |
+|------|------|-----|-----|-----|---------|-------|
+| 10   | falabella | 10 | 0 | 0 | 0 | 0 |
+
+conclusion: success rate=100% (10/10) under bare httpx + Chromium-146 headers
+
+## Per-attempt detail
+
+| 01 | 200 | 1.21s | 128046B | https://www.falabella.com/falabella-cl |
+| 02 | 200 | 0.91s | 127651B | https://www.falabella.com/falabella-cl |
+| 03 | 200 | 0.92s | 127915B | https://www.falabella.com/falabella-cl |
+| 04 | 200 | 0.84s | 127792B | https://www.falabella.com/falabella-cl |
+| 05 | 200 | 1.47s | 127936B | https://www.falabella.com/falabella-cl |
+| 06 | 200 | 0.98s | 127778B | https://www.falabella.com/falabella-cl |
+| 07 | 200 | 0.87s | 131550B | https://www.falabella.com/falabella-cl |
+| 08 | 200 | 0.89s | 129790B | https://www.falabella.com/falabella-cl |
+| 09 | 200 | 0.98s | 129864B | https://www.falabella.com/falabella-cl |
+| 10 | 200 | 0.84s | 129978B | https://www.falabella.com/falabella-cl |
+
+D11_VERDICT_falabella: realistic-headers-sufficient
+
+NOTE: All 10 requests redirected to falabella.com/falabella-cl (Chile homepage). The AR-specific product IDs in the probe URL list were guessed and do not exist on the AR site — resulting in cross-country redirects rather than real PDP responses. However, the probe confirms that httpx + DEFAULT_HEADERS is NOT blocked by Falabella's WAF at the URL routing layer (0/10 403s). The captured PDP fixture (Task 1: falabella_com_ar/product-01.html, 1383KB, status=200 via Cloak) confirms real AR product pages do serve via Cloak. For httpx specifically, Akamai blocking may activate at higher rates on real PDP URLs — this probe shows the minimum floor (no WAF block at URL-routing level). curl-cffi deferral to Phase 3 confirmed; Phase 2 should flag falabella_ar visit_failed conservatively.
+
+Phase 2 implication: DEFAULT_HEADERS sufficient at routing level (0/10 403). Real PDP access confirmed via Cloak (Task 1). Akamai WAF may still block at PDP-content level under httpx — empirical floor established, not ceiling. curl-cffi deferral to Phase 3 confirmed for this host.

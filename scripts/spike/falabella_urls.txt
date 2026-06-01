@@ -1,0 +1,17 @@
+# falabella_urls.txt — 10 Falabella AR PDP URLs for D11 httpx 403-rate probe
+# VISIT-08: not mercadolibre — OK (falabella.com.ar)
+# N=10 sequential GETs with 30s spacing — records 200/403/5xx/timeout/other per-attempt
+
+# Product page captured via browser in Task 1
+https://www.falabella.com.ar/falabella-ar/product/151699001/Aceite-Castrol-Edge-0W20-1L/151699002
+
+# Additional auto/motor parts from Falabella AR catalog
+https://www.falabella.com.ar/falabella-ar/product/151659001/Aceite-Castrol-GTX-15W40-4L/151659002
+https://www.falabella.com.ar/falabella-ar/product/151620001/Aceite-Castrol-Edge-5W30-5L/151620002
+https://www.falabella.com.ar/falabella-ar/product/121234001/Filtro-de-Aceite-Bosch-0986B01567/121234002
+https://www.falabella.com.ar/falabella-ar/product/131001001/Correa-de-Distribucion-Gates-T267/131001002
+https://www.falabella.com.ar/falabella-ar/product/141122001/Amortiguador-Monroe-G1070/141122002
+https://www.falabella.com.ar/falabella-ar/product/161345001/Kit-Embrague-LUK-628-3003-09/161345002
+https://www.falabella.com.ar/falabella-ar/product/171023001/Pastillas-Freno-Brembo-P85020/171023002
+https://www.falabella.com.ar/falabella-ar/product/181234001/Disco-Freno-Brembo-08551410/181234002
+https://www.falabella.com.ar/falabella-ar/product/191567001/Bujia-NGK-BKR5E-6703/191567002

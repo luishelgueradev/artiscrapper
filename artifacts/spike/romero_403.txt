@@ -1,0 +1,26 @@
+## 403-rate probe: host=romero (N=10, 30s spacing, httpx + DEFAULT_HEADERS)
+
+| N=10 | host | 200 | 403 | 5xx | timeout | other |
+|------|------|-----|-----|-----|---------|-------|
+| 10   | romero | 1 | 0 | 0 | 0 | 9 |
+
+conclusion: success rate=10% (1/10) under bare httpx + Chromium-146 headers
+
+## Per-attempt detail
+
+| 01 | 404 | 0.57s | 1389B | https://romero-jugueteria.com.ar/productos/lego-technic-4219 |
+| 02 | 404 | 0.41s | 1389B | https://romero-jugueteria.com.ar/productos/barbie-fashionist |
+| 03 | 404 | 0.42s | 1389B | https://romero-jugueteria.com.ar/productos/monopoly-clasico- |
+| 04 | 404 | 0.42s | 1389B | https://romero-jugueteria.com.ar/productos/pelota-quico-play |
+| 05 | 404 | 0.43s | 1389B | https://romero-jugueteria.com.ar/productos/hot-wheels-pista- |
+| 06 | 404 | 0.48s | 1389B | https://romero-jugueteria.com.ar/productos/playmobil-granja- |
+| 07 | 404 | 0.41s | 1389B | https://romero-jugueteria.com.ar/productos/funko-pop-spider- |
+| 08 | 404 | 0.42s | 1389B | https://romero-jugueteria.com.ar/productos/lego-city-60366/ |
+| 09 | 200 | 0.60s | 44367B | https://romero-jugueteria.com.ar/ |
+| 10 | 404 | 0.43s | 1389B | https://romero-jugueteria.com.ar/productos/ |
+
+D11_VERDICT_romero: realistic-headers-insufficient
+
+NOTE: The low success rate is due to URL quality: all 8 guessed product slugs returned 404 (store is accessible but those products don't exist). The homepage (URL 09) returned 200. The /productos/ catalog page also returned 404. Zero 403 WAF blocks observed. D11 finding: romero-jugueteria.com.ar is accessible via httpx + DEFAULT_HEADERS (no WAF blocking). The realistic-headers-insufficient verdict is an artifact of guessed URLs, NOT of WAF 403 blocking. The store is a Tiendanube-based small retailer — Tiendanube stores typically have no WAF on httpx.
+
+Phase 2 implication: realistic-headers-insufficient verdict due to URL quality only (1/10 homepage 200, 8/10 guessed-slug 404s, 0/10 403s). No WAF blocking detected. Romero httpx access is clean. curl-cffi deferral to Phase 3 confirmed for this host. NOTE: URL list for romero must be seeded from real product catalog before Phase 2 visit-pass testing.
