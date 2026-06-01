@@ -49,7 +49,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — LLM router spike: probe OpenAI-compat /v1/chat/completions (D8 amended — NOT raw Ollama /api/chat), measure TTFT p50/p95 + JSON-mode reliability + KV-cache reuse + per-bearer concurrency at N=2/4/8 (D10 — likely LLM_CONCURRENCY=2). Hand-label 30-50 candidates for LLM regression set (AC-5). Output: SPIKE.md §LLM + tests/fixtures/llm/labelled.jsonl.
+- [x] 01-02-PLAN.md — LLM router spike: probe OpenAI-compat /v1/chat/completions (D8 amended — NOT raw Ollama /api/chat), measure TTFT p50/p95 + JSON-mode reliability + KV-cache reuse + per-bearer concurrency at N=2/4/8 (D10 — likely LLM_CONCURRENCY=2). Hand-label 30-50 candidates for LLM regression set (AC-5). Output: SPIKE.md §LLM + tests/fixtures/llm/labelled.jsonl.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -162,7 +162,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Spike & Empirical Validation | 1/3 | In Progress|  |
+| 1. Spike & Empirical Validation | 2/3 | In Progress|  |
 | 2. MVP | 0/3 | Not started | - |
 | 3. Robustness | 0/2 | Not started | - |
 | 4. Production Operations | 0/TBD | Not started | - |
