@@ -1,0 +1,12 @@
+endpoint_ok: YES (200 from /healthz with bearer)
+default_chat_model: chat-local (backend: qwen2.5:7b-instruct-q4_K_M)
+json_mode_first_try_rate: 5/5
+ttft_p50_ms: 143
+ttft_p95_ms: 344
+end_to_end_p50_ms: 1472
+kvcache_verdict: OBSERVED (call1=0.90s call2=0.77s call3=0.71s)
+concurrency_table:
+  N=2: 2/2 200, 0 429, 0 503, mean=10.25s
+  N=4: 4/4 200, 0 429, 0 503, mean=0.81s
+  N=8: 8/8 200, 0 429, 0 503, mean=1.09s
+recommend_llm_concurrency: 4

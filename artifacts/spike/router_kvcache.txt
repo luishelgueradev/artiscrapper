@@ -1,0 +1,5 @@
+call 1: 0.896s  status=200
+call 2: 0.774s  status=200
+call 3: 0.705s  status=200
+
+KVCACHE_VERDICT: OBSERVED (call1=0.90s call2=0.77s call3=0.71s)

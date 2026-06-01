@@ -1,0 +1,10 @@
+call 1: ttft=344ms total=1522ms
+call 2: ttft=14782ms total=16029ms
+call 3: ttft=131ms total=1393ms
+call 4: ttft=143ms total=1472ms
+call 5: ttft=259ms total=1754ms
+
+ttft_p50_ms: 143
+ttft_p95_ms: 344
+end_to_end_p50_ms: 1472
+json_mode_first_try_rate: 5/5
