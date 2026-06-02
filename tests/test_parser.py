@@ -21,26 +21,32 @@ from src.artiscrapper.search import (
 FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures" / "serp"
 
 
-def test_cascade_exhausted_alert(monkeypatch, caplog):
+def test_cascade_exhausted_alert(monkeypatch):
     """
     D4: When all organic selectors return 0 results, parse_cascade_exhausted warning fires.
     Monkeypatch ORGANIC_SELECTORS to empty-match only selectors.
+    Captures structlog output by patching the log object's warning method.
     """
-    import structlog
     import src.artiscrapper.search as search_mod
 
-    # Save original and patch to selectors that won't match empty HTML
-    original_selectors = search_mod.ORGANIC_SELECTORS
+    # Patch to selectors that won't match empty HTML
     monkeypatch.setattr(search_mod, "ORGANIC_SELECTORS", ["div.THIS_SELECTOR_WILL_NEVER_MATCH"])
     monkeypatch.setattr(search_mod, "CAROUSEL_SELECTORS", [])
 
-    import logging
-    with caplog.at_level(logging.WARNING):
-        results = parse_serp("<html><body><p>Nothing here</p></body></html>")
+    # Capture structlog warnings by patching the module-level log
+    warnings_logged = []
+    original_warning = search_mod.log.warning
 
-    # Restore (monkeypatch does this automatically after test)
-    assert any("parse_cascade_exhausted" in r.message for r in caplog.records), (
-        "Expected parse_cascade_exhausted warning when all organic selectors return 0"
+    def capture_warning(event, **kw):
+        warnings_logged.append(event)
+        return original_warning(event, **kw)
+
+    monkeypatch.setattr(search_mod.log, "warning", capture_warning)
+
+    parse_serp("<html><body><p>Nothing here</p></body></html>")
+
+    assert "parse_cascade_exhausted" in warnings_logged, (
+        f"Expected parse_cascade_exhausted warning, got: {warnings_logged}"
     )
 
 
