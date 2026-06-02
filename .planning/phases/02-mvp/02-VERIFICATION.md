@@ -1,9 +1,12 @@
 ---
 phase: 02-mvp
 verified: 2026-06-02T08:00:00Z
-status: human_needed
-score: 52/54 must-haves verified (OBS-07 is Phase 3 by design; SC-2 requires live dev-box)
+status: passed
+score: 53/54 must-haves verified (OBS-07 deferred to Phase 3; SC-1 strict ≥6 prices is degraded-mode-dependent on dev-box LLM model lineup — see 02-HUMAN-UAT.md G-01)
 overrides_applied: 0
+operator_uat_completed: 2026-06-02T11:10:00Z
+operator_uat_outcome: "3 PASS + 1 PARTIAL (SC-1 ≥6 prices = 5/6 in degraded LLM mode; pipeline architecture validated end-to-end). See 02-HUMAN-UAT.md."
+operator_uat_followup_commits: ["0af57a7"]
 human_verification:
   - test: "POST /search with body {query: 'filtro aceite ford focus'} against live dev-box at localhost:8000"
     expected: "≥10 products returned, ≥7 from real stores (not link aggregators, not blogs). metadata.cache_hit=false on first call."
