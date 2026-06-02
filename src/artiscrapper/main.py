@@ -6,6 +6,9 @@ Phase 1 NEEDS-PIVOT applied: _recycle_browser_loop includes page.evaluate("1") h
 every 10s to catch SIGSTOP (is_connected() stays True on SIGSTOP — SPIKE.md §Browser confirmed).
 D6: uvicorn --loop asyncio --workers 1 — never uvloop.
 D8: only ephemeral new_context() per request — no persistent browser contexts.
+Full 10-step POST /search pipeline wired in plan 02-02:
+[1] cache → [2] Google fetch → [3] detect_block → [4] parse → [5] LLM →
+[6] visit → [7] freshness → [8] rerank → [9] cache write → [10] response
 """
 import asyncio
 import time
@@ -19,11 +22,16 @@ from cloakbrowser import launch_async  # Phase 1 confirmed: this is the correct 
 from fastapi import FastAPI, Request
 from fastapi.responses import ORJSONResponse
 
+from .browser import _detect_block, fetch_serp
 from .cache import get_cached, init_schema, make_cache_key, normalize_query, PRAGMAS, prune_loop, set_cached
 from .config import settings
+from .freshness import assess_freshness
+from .llm import curate_candidates, router_health_check
 from .logging_setup import configure_logging
-from .models import Metadata, SearchRequest, SearchResponse
+from .models import Candidate, Metadata, SearchRequest, SearchResponse
 from .rate_limit import GoogleRateLimiter
+from .search import build_serp_url, dedupe, is_junk, parse_serp, rerank
+from .visit import visit_candidates
 
 log = structlog.get_logger()
 
@@ -201,32 +209,37 @@ async def health_deep(request: Request) -> dict:
 
 
 # ──────────────────────────────────────────
-# POST /search (Wave 1 stub — cache lookup only)
-# Full implementation: LLM + visit pass added in plan 02-02
+# POST /search — Full 10-step pipeline (plan 02-02)
+# CACHE-05: NEVER fetch Google without checking cache first.
+# VISIT-03: visit_timeout_s=request.visit_timeout_s — per-request timeout threaded through.
 # ──────────────────────────────────────────
 
 @app.post("/search", response_model=SearchResponse)
 async def search(request: Request, body: SearchRequest) -> SearchResponse:
     """
-    POST /search — Wave 1 stub: cache lookup + placeholder response.
-    Full handler composition (LLM + visit + fresh + rerank) ships in plan 02-02.
+    POST /search — Full 10-step pipeline wired in plan 02-02.
     Field name is 'query' (NOT 'q') per PRD SEARCH-01.
-    """
-    t_start = time.monotonic()
 
-    # Bind per-request structlog context
+    [1] cache lookup → [2] Google fetch (parallel A+B) → [3] detect_block →
+    [4] parse_serp → [5] merge+dedupe+blocklist → [6] LLM filter (or degraded mode) →
+    [7] visit_candidates → [8] assess_freshness → [9] rerank → [10] cache write → response
+    """
+    t_start = time.time()
+
+    # Bind per-request structlog context (OBS-05: only cache key prefix, never full query)
     cache_key = make_cache_key(body.query)
+    query_norm = normalize_query(body.query)
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(
         query_hash=cache_key[:12],
         stage="search",
     )
 
-    # Cache lookup (CACHE-05: NEVER fetch Google without checking cache first)
+    # ── [1] Cache lookup (CACHE-05: ALWAYS before any Google fetch) ──
     cached = await get_cached(request.app.state.cache, cache_key)
     if cached is not None:
         log.info("cache_hit")
-        elapsed_ms = int((time.monotonic() - t_start) * 1000)
+        elapsed_ms = int((time.time() - t_start) * 1000)
         return SearchResponse(
             query=body.query,
             results=cached.get("results", []),
@@ -237,16 +250,165 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
             ),
         )
 
-    # Cache miss — Wave 1 stub: return empty results
-    # Full pipeline (fetch SERP → parse → LLM → visit → rerank) ships in 02-02
-    log.info("cache_miss_stub_response")
-    elapsed_ms = int((time.monotonic() - t_start) * 1000)
+    log.info("cache_miss")
+
+    # ── [2] Google fetch: parallel A (query) + B (query + mercadolibre) ──
+    browser = request.app.state.browser
+    rate_limiter = request.app.state.rate_limit
+
+    url_a = build_serp_url(body.query, meli=False)
+    url_b = build_serp_url(body.query, meli=True)
+
+    html_a, block_a = "", None
+    html_b, block_b = "", None
+    block_detected = False
+
+    try:
+        (html_a, block_a), (html_b, block_b) = await asyncio.gather(
+            fetch_serp(browser, url_a, rate_limiter),
+            fetch_serp(browser, url_b, rate_limiter),
+        )
+        request.app.state.browser_uses += 2
+    except Exception as exc:
+        log.warning("google_fetch_failed", error=str(type(exc).__name__))
+        elapsed_ms = int((time.time() - t_start) * 1000)
+        return SearchResponse(
+            query=body.query,
+            results=[],
+            metadata=Metadata(
+                elapsed_ms=elapsed_ms,
+                cache_hit=False,
+                block_detected=False,
+            ),
+        )
+
+    # ── [3] detect_block ──
+    if block_a or block_b:
+        block_detected = True
+        log.warning("google_fetch_blocked", reason=block_a or block_b)
+        elapsed_ms = int((time.time() - t_start) * 1000)
+        return SearchResponse(
+            query=body.query,
+            results=[],
+            metadata=Metadata(
+                elapsed_ms=elapsed_ms,
+                cache_hit=False,
+                block_detected=True,
+            ),
+        )
+
+    # ── [4] parse_serp on both results ──
+    candidates_a = parse_serp(html_a) if html_a else []
+    candidates_b = parse_serp(html_b) if html_b else []
+
+    # ── [5] merge + dedupe + junk-domain blocklist ──
+    all_candidates = candidates_a + candidates_b
+    all_candidates = dedupe(all_candidates)
+    all_candidates = [c for c in all_candidates if not is_junk(c["url"])]
+
+    candidates_total = len(all_candidates)
+    log.info("parse_done", candidates_total=candidates_total)
+
+    # ── [6] LLM curator (or degraded mode) ──
+    llm_degraded = False
+    llm_filtered_out = 0
+
+    router_healthy = await router_health_check(
+        settings.LLM_ROUTER_URL,
+        settings.LLM_ROUTER_BEARER_TOKEN,
+    )
+
+    if router_healthy and all_candidates:
+        survivors, llm_filtered_out, llm_degraded = await curate_candidates(
+            all_candidates,
+            settings.LLM_ROUTER_URL,
+            settings.LLM_ROUTER_BEARER_TOKEN,
+            concurrency=settings.LLM_CONCURRENCY,
+        )
+    else:
+        # LLM-06: degraded mode — router down or no candidates
+        if not router_healthy:
+            llm_degraded = True
+            log.warning("llm_degraded_router_down")
+        # Heuristic-only filtering: keep candidates that have price_in_card
+        # or that weren't filtered by the junk-domain blocklist (already done above)
+        survivors = [c for c in all_candidates if c.get("has_price")]
+        if not survivors:
+            survivors = all_candidates  # fallback: keep all non-junk candidates
+        llm_filtered_out = candidates_total - len(survivors)
+
+    # ── [7] Visit pass ──
+    # VISIT-03: pass per-request timeout explicitly (not the default)
+    visited_count = 0
+    visit_failed_count = 0
+
+    if survivors:
+        survivors = await visit_candidates(
+            survivors,
+            visit_timeout_s=body.visit_timeout_s,
+        )
+        visited_count = sum(1 for c in survivors if not c.get("meli_skip") and not c.get("visit_failed") and not c.get("skip_dead"))
+        visit_failed_count = sum(1 for c in survivors if c.get("visit_failed"))
+
+    # ── [8] Freshness assessment ──
+    for candidate in survivors:
+        fresh_val = assess_freshness(
+            candidate,
+            verdict=None,  # verdict not stored per-candidate; freshness_signal is in candidate
+            extracted=None,
+        )
+        candidate["fresh"] = fresh_val
+
+    # ── [9] Re-rank ──
+    ranked = rerank(survivors, max_results=body.max_results)
+
+    # ── Build Candidate list ──
+    results = []
+    for c in ranked:
+        results.append(Candidate(
+            url=c["url"],
+            title=c.get("title"),
+            snippet=c.get("snippet"),
+            price=c.get("price") or c.get("price_hint"),
+            currency=c.get("currency"),
+            has_price=bool(c.get("price") or c.get("price_in_card")),
+            fresh=c.get("fresh"),
+            llm_confidence=c.get("llm_confidence", 0.0),
+            freshness_signal=c.get("freshness_signal", "unknown"),
+            flags=c.get("flags", []),
+        ))
+
+    elapsed_ms = int((time.time() - t_start) * 1000)
+
+    # ── [10] Cache write (non-blocking — fire and don't await) ──
+    async def _write_cache() -> None:
+        try:
+            await set_cached(
+                cache=request.app.state.cache,
+                cache_key=cache_key,
+                query=body.query,
+                query_norm=query_norm,
+                response={"results": [r.model_dump() for r in results]},
+                html_a=html_a,
+                html_b=html_b,
+            )
+        except Exception as exc:
+            log.warning("cache_write_failed", error=str(type(exc).__name__))
+
+    asyncio.create_task(_write_cache())
+
     return SearchResponse(
         query=body.query,
-        results=[],
+        results=results,
         metadata=Metadata(
             elapsed_ms=elapsed_ms,
+            google_fetches=2,
+            candidates_total=candidates_total,
+            llm_filtered_out=llm_filtered_out,
+            visited=visited_count,
+            visit_failed=visit_failed_count,
             cache_hit=False,
-            block_detected=False,
+            llm_degraded=llm_degraded,
+            block_detected=block_detected,
         ),
     )
