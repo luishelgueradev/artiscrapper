@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     LLM_ROUTER_BEARER_TOKEN: (
         str  # no default — pydantic raises ValidationError at startup if absent
     )
+    # Default model name targets the current local-llms-router deploy. Phase 1
+    # SPIKE used "chat-local"; the router has since migrated to explicit ollama
+    # tags (no alias). Override via env when targeting a different backend.
+    LLM_MODEL: str = "llama3.2:3b-instruct-q4_K_M"
     LLM_CONCURRENCY: int = 4  # empirically confirmed Phase 1 (N=4: 4/4 200, mean=0.81s)
     LOG_JSON: bool = True
     LOG_LEVEL: str = "INFO"

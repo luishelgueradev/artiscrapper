@@ -375,6 +375,16 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
             settings.LLM_ROUTER_BEARER_TOKEN,
             concurrency=settings.LLM_CONCURRENCY,
         )
+        # LLM-06: if the curator dropped everything because the router systematically
+        # failed (e.g., model_capability_mismatch returns 400 for every call), fall back
+        # to the same heuristic-only mode the router-down branch uses. Without this,
+        # `llm_degraded=True` would surface in metadata but the response would be empty.
+        if llm_degraded and not survivors:
+            log.warning("llm_degraded_all_dropped_fallback_to_heuristic")
+            survivors = [c for c in all_candidates if c.get("has_price")]
+            if not survivors:
+                survivors = all_candidates
+            llm_filtered_out = candidates_total - len(survivors)
     else:
         # LLM-06: degraded mode — router down or no candidates
         if not router_healthy:
@@ -440,7 +450,11 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
     elapsed_ms = int((time.time() - t_start) * 1000)
 
     # ── [10] Cache write (non-blocking — fire and don't await) ──
+    # Defensive: skip caching empty result sets so a transient pipeline failure
+    # doesn't poison the cache for 24h (would hide subsequent retries' real output).
     async def _write_cache() -> None:
+        if not results:
+            return
         try:
             await set_cached(
                 cache=request.app.state.cache,

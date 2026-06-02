@@ -2,16 +2,22 @@ services:
   artiscrapper:
     build: .
     ports:
-      - "8000:8000"
+      # Override on busy hosts: HOST_PORT=8001 docker compose up
+      - "${HOST_PORT:-8000}:8000"
     volumes:
       - ./data/cache.db:/app/cache.db  # sqlite bind-mount (DEPLOY-06)
     environment:
       - CACHE_DB_PATH=/app/cache.db
-      - LLM_ROUTER_URL=http://host.docker.internal:3210
+      - LLM_ROUTER_URL=${LLM_ROUTER_URL:-http://host.docker.internal:3210}
       - LLM_ROUTER_BEARER_TOKEN=${LLM_ROUTER_BEARER_TOKEN}
+      - LLM_MODEL=${LLM_MODEL:-llama3.2:3b-instruct-q4_K_M}
       - GOOGLE_MIN_INTERVAL_S=60
       - BROWSER_RECYCLE_AFTER=200
       - LLM_CONCURRENCY=4
       - LOG_JSON=true
       - LOG_LEVEL=INFO
+    extra_hosts:
+      # Make host.docker.internal resolve on Linux Docker (without Docker Desktop).
+      # No-op on Docker Desktop where it's already wired by default.
+      - "host.docker.internal:host-gateway"
     init: true  # equivalent to tini if not using ENTRYPOINT tini

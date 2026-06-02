@@ -1,6 +1,11 @@
 .env.spike
+.env
 .venv/
 __pycache__/
 *.pyc
 *.egg-info/
 *.deb
+
+# Runtime artifacts (cache + logs)
+data/
+logs/

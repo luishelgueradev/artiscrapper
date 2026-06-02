@@ -16,6 +16,7 @@ import httpx
 import structlog
 from pydantic import BaseModel, Field, ValidationError
 
+from .config import settings
 from .metrics import metrics
 
 log = structlog.get_logger()
@@ -104,7 +105,7 @@ async def classify_candidate(
     """
     async with sem:
         payload = {
-            "model": "chat-local",  # router auto-selects; explicit for audit
+            "model": settings.LLM_MODEL,  # configurable via env (LLM_MODEL); see config.py
             "messages": [
                 {
                     "role": "system",
