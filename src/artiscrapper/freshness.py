@@ -4,21 +4,24 @@ FRESH-01..04 requirements from 02-RESEARCH.md §Phase Requirements.
 assess_freshness(candidate, verdict, extracted) → fresh value (True | None).
 FRESH-04: no signal → fresh=None (NOT False — unknown is different from stale).
 """
-from datetime import datetime, timezone, timedelta
+
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .llm import LLMVerdict
 
 # FRESH-01: MELI hosts — visit returns 200 → fresh=True
-MELI_HOSTS = frozenset({
-    "mercadolibre.com.ar",
-    "www.mercadolibre.com.ar",
-    "listado.mercadolibre.com.ar",
-    "articulo.mercadolibre.com.ar",
-    "mercadolibre.com",
-    "www.mercadolibre.com",
-})
+MELI_HOSTS = frozenset(
+    {
+        "mercadolibre.com.ar",
+        "www.mercadolibre.com.ar",
+        "listado.mercadolibre.com.ar",
+        "articulo.mercadolibre.com.ar",
+        "mercadolibre.com",
+        "www.mercadolibre.com",
+    }
+)
 
 # Freshness window: 90 days
 FRESHNESS_WINDOW_DAYS = 90
@@ -44,6 +47,7 @@ def _is_host_meli(url: str) -> bool:
     """Return True if the URL's registered domain is a MELI domain."""
     try:
         from urllib.parse import urlparse
+
         netloc = urlparse(url).netloc.lower()
         # Strip www. prefix for comparison
         return any(netloc == h or netloc.endswith("." + h.lstrip("www.")) for h in MELI_HOSTS)

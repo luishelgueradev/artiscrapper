@@ -4,6 +4,7 @@ Pattern 13 from 02-RESEARCH.md (lines 1368-1389) — verbatim.
 Process-singleton (safe with --workers 1).
 Phase 3 wires these into prometheus-client.
 """
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 

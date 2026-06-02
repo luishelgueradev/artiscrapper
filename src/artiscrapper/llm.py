@@ -7,6 +7,7 @@ D2 FOOT-GUN: LLMVerdict.fallback() confidence=0.3 IS dropped at the <0.4 cut in 
 LLM-08/OBS-05: NEVER log prompt content, response content, bearer_token, candidate fields.
 LLM-03: module-level asyncio.Semaphore(LLM_CONCURRENCY=4) in curate_candidates.
 """
+
 import asyncio
 import json
 from typing import Literal
@@ -14,6 +15,8 @@ from typing import Literal
 import httpx
 import structlog
 from pydantic import BaseModel, Field, ValidationError
+
+from .metrics import metrics
 
 log = structlog.get_logger()
 
@@ -135,6 +138,7 @@ async def classify_candidate(
             raw = resp.json()["choices"][0]["message"]["content"]
             return LLMVerdict.model_validate_json(raw)
         except httpx.TimeoutException:
+            metrics.llm_fallback_total["timeout"] += 1  # OBS-06
             return LLMVerdict.fallback("timeout")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 503:
@@ -151,11 +155,15 @@ async def classify_candidate(
                     raw2 = resp2.json()["choices"][0]["message"]["content"]
                     return LLMVerdict.model_validate_json(raw2)
                 except Exception:
+                    metrics.llm_fallback_total["overload"] += 1  # OBS-06
                     return LLMVerdict.fallback("overload")
+            metrics.llm_fallback_total[f"http_{e.response.status_code}"] += 1  # OBS-06
             return LLMVerdict.fallback(f"http_{e.response.status_code}")
         except (json.JSONDecodeError, ValidationError, KeyError):
+            metrics.llm_fallback_total["malformed"] += 1  # OBS-06
             return LLMVerdict.fallback("malformed")
         except Exception:
+            metrics.llm_fallback_total["conn_error"] += 1  # OBS-06
             return LLMVerdict.fallback("conn_error")
 
 
@@ -210,10 +218,9 @@ async def curate_candidates(
     dropped_count = 0
 
     async with httpx.AsyncClient(http2=True) as client:
-        verdicts = await asyncio.gather(*[
-            classify_candidate(client, c, sem, router_url, bearer_token)
-            for c in candidates
-        ])
+        verdicts = await asyncio.gather(
+            *[classify_candidate(client, c, sem, router_url, bearer_token) for c in candidates]
+        )
 
     for candidate, verdict in zip(candidates, verdicts):
         # Track fallback for degraded mode detection (LLM-05)

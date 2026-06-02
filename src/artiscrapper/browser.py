@@ -7,9 +7,9 @@ D8: ephemeral new_context() per request ONLY — no persistent contexts.
 BROWSER-01: singleton. BROWSER-02: ephemeral context. BROWSER-04: rate_limiter.acquire().
 BROWSER-05: _detect_block.
 """
-from cloakbrowser import launch_async  # Phase 1 confirmed import path
 
 import structlog
+from cloakbrowser import launch_async  # Phase 1 confirmed import path
 
 log = structlog.get_logger()
 
@@ -20,10 +20,10 @@ log = structlog.get_logger()
 BLOCK_MARKERS = (
     "detected unusual traffic",
     "captcha",
-    "sorry/index",           # URL path marker
-    "g-recaptcha",           # DOM marker
-    'id="captcha-form"',     # DOM marker
-    "before you continue",   # consent interstitial (pws=0 was clean, but defensive)
+    "sorry/index",  # URL path marker
+    "g-recaptcha",  # DOM marker
+    'id="captcha-form"',  # DOM marker
+    "before you continue",  # consent interstitial (pws=0 was clean, but defensive)
     'aria-label="antes de continuar',  # ES variant
 )
 

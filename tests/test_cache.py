@@ -3,11 +3,9 @@ Cache integration tests — fully implemented (cache.py ships in Task 2).
 CACHE-01: WAL schema. CACHE-02: gzip BLOB. CACHE-03: sha256 key. CACHE-04: lazy TTL.
 Uses tmp_db fixture (real sqlite file for WAL mode support).
 """
+
 import asyncio
 import gzip
-import time
-
-import pytest
 
 from src.artiscrapper.cache import (
     get_cached,
@@ -45,14 +43,11 @@ async def test_gzip_roundtrip(tmp_db):
     norm = normalize_query(query)
     response = {"results": [], "metadata": {"cache_hit": False}}
 
-    await set_cached(
-        tmp_db, key, query, norm, response, original_html_a, original_html_b
-    )
+    await set_cached(tmp_db, key, query, norm, response, original_html_a, original_html_b)
 
     # Read the raw BLOBs from sqlite to verify gzip compression
     cur = await tmp_db.execute(
-        "SELECT raw_serp_html_a, raw_serp_html_b FROM query_cache WHERE cache_key=?",
-        (key,)
+        "SELECT raw_serp_html_a, raw_serp_html_b FROM query_cache WHERE cache_key=?", (key,)
     )
     row = await cur.fetchone()
     assert row is not None, "Row was not inserted"
@@ -73,7 +68,7 @@ async def test_cache_key_deterministic(tmp_db):
     """CACHE-03: Identical normalized queries produce the same sha256 key."""
     q1 = "Filtro Aceite Ford Focus"
     q2 = "filtro  aceite  ford  focus"  # extra spaces
-    q3 = "filtro aceite ford focus "    # trailing space
+    q3 = "filtro aceite ford focus "  # trailing space
 
     key1 = make_cache_key(q1)
     key2 = make_cache_key(q2)
@@ -109,8 +104,6 @@ async def test_lazy_ttl(tmp_db):
     assert expired is None, "Expired entry should return None (lazy TTL)"
 
     # Row should still be in DB (lazy — not deleted yet)
-    cur = await tmp_db.execute(
-        "SELECT cache_key FROM query_cache WHERE cache_key=?", (key,)
-    )
+    cur = await tmp_db.execute("SELECT cache_key FROM query_cache WHERE cache_key=?", (key,))
     row = await cur.fetchone()
     assert row is not None, "Row should still be in DB (prune_loop handles deletion, not hot path)"

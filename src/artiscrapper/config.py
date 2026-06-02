@@ -3,6 +3,7 @@ Configuration module — pydantic-settings BaseSettings.
 All tunable params via env vars with typed defaults.
 LLM_ROUTER_BEARER_TOKEN has NO default — startup fails without it (RESEARCH.md §Environment).
 """
+
 from pydantic_settings import BaseSettings
 
 
@@ -13,12 +14,14 @@ class Settings(BaseSettings):
     GOOGLE_MIN_INTERVAL_S: int = 60
     BROWSER_RECYCLE_AFTER: int = 200
     LLM_ROUTER_URL: str = "http://127.0.0.1:3210"
-    LLM_ROUTER_BEARER_TOKEN: str  # no default — pydantic raises ValidationError at startup if absent
-    LLM_CONCURRENCY: int = 4      # empirically confirmed Phase 1 (N=4: 4/4 200, mean=0.81s)
+    LLM_ROUTER_BEARER_TOKEN: (
+        str  # no default — pydantic raises ValidationError at startup if absent
+    )
+    LLM_CONCURRENCY: int = 4  # empirically confirmed Phase 1 (N=4: 4/4 200, mean=0.81s)
     LOG_JSON: bool = True
     LOG_LEVEL: str = "INFO"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]  # pydantic-settings reads LLM_ROUTER_BEARER_TOKEN from env

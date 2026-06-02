@@ -4,11 +4,10 @@ Implemented against search.py (Task 3). Tests are real (not stubs) for parser fu
 that are implemented in this plan.
 SEARCH-04: cascade. SEARCH-05: canonicalize + dedupe. SEARCH-06: junk blocklist.
 """
+
 import glob
 import os
 import pathlib
-
-import pytest
 
 from src.artiscrapper.search import (
     build_serp_url,

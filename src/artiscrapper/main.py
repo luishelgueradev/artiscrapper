@@ -10,6 +10,7 @@ Full 10-step POST /search pipeline wired in plan 02-02:
 [1] cache → [2] Google fetch → [3] detect_block → [4] parse → [5] LLM →
 [6] visit → [7] freshness → [8] rerank → [9] cache write → [10] response
 """
+
 import asyncio
 import time
 from contextlib import asynccontextmanager
@@ -22,12 +23,21 @@ from cloakbrowser import launch_async  # Phase 1 confirmed: this is the correct 
 from fastapi import FastAPI, Request
 from fastapi.responses import ORJSONResponse
 
-from .browser import _detect_block, fetch_serp
-from .cache import get_cached, init_schema, make_cache_key, normalize_query, PRAGMAS, prune_loop, set_cached
+from .browser import fetch_serp
+from .cache import (
+    PRAGMAS,
+    get_cached,
+    init_schema,
+    make_cache_key,
+    normalize_query,
+    prune_loop,
+    set_cached,
+)
 from .config import settings
 from .freshness import assess_freshness
 from .llm import curate_candidates, router_health_check
 from .logging_setup import configure_logging
+from .metrics import metrics
 from .models import Candidate, Metadata, SearchRequest, SearchResponse
 from .rate_limit import GoogleRateLimiter
 from .search import build_serp_url, dedupe, is_junk, parse_serp, rerank
@@ -39,6 +49,7 @@ log = structlog.get_logger()
 # ──────────────────────────────────────────
 # SIGSTOP heartbeat recycle loop (Phase 1 NEEDS-PIVOT)
 # ──────────────────────────────────────────
+
 
 async def _recycle_browser_loop(app: FastAPI) -> None:
     """
@@ -93,6 +104,7 @@ async def _recycle_browser_loop(app: FastAPI) -> None:
 # Lifespan (Pattern 1 lines 352-402)
 # ──────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging(json_logs=settings.LOG_JSON, level=settings.LOG_LEVEL)
@@ -110,9 +122,7 @@ async def lifespan(app: FastAPI):
     app.state.browser_uses = 0
 
     # 3. Rate limiter (1/min between Google fetches, configurable)
-    app.state.rate_limit = GoogleRateLimiter(
-        min_interval_s=settings.GOOGLE_MIN_INTERVAL_S
-    )
+    app.state.rate_limit = GoogleRateLimiter(min_interval_s=settings.GOOGLE_MIN_INTERVAL_S)
 
     # 4. Background tasks
     tasks = [
@@ -152,6 +162,7 @@ app.add_middleware(CorrelationIdMiddleware)
 # ──────────────────────────────────────────
 # Health endpoints (Pattern 11)
 # ──────────────────────────────────────────
+
 
 @app.get("/health")
 async def health(request: Request) -> dict:
@@ -213,6 +224,7 @@ async def health_deep(request: Request) -> dict:
 # CACHE-05: NEVER fetch Google without checking cache first.
 # VISIT-03: visit_timeout_s=request.visit_timeout_s — per-request timeout threaded through.
 # ──────────────────────────────────────────
+
 
 @app.post("/search", response_model=SearchResponse)
 async def search(request: Request, body: SearchRequest) -> SearchResponse:
@@ -285,7 +297,9 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
     # ── [3] detect_block ──
     if block_a or block_b:
         block_detected = True
-        log.warning("google_fetch_blocked", reason=block_a or block_b)
+        block_reason = block_a or block_b
+        log.warning("google_fetch_blocked", reason=block_reason)
+        metrics.block_detected_total[block_reason] += 1  # OBS-06
         elapsed_ms = int((time.time() - t_start) * 1000)
         return SearchResponse(
             query=body.query,
@@ -347,7 +361,11 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
             survivors,
             visit_timeout_s=body.visit_timeout_s,
         )
-        visited_count = sum(1 for c in survivors if not c.get("meli_skip") and not c.get("visit_failed") and not c.get("skip_dead"))
+        visited_count = sum(
+            1
+            for c in survivors
+            if not c.get("meli_skip") and not c.get("visit_failed") and not c.get("skip_dead")
+        )
         visit_failed_count = sum(1 for c in survivors if c.get("visit_failed"))
 
     # ── [8] Freshness assessment ──
@@ -365,18 +383,20 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
     # ── Build Candidate list ──
     results = []
     for c in ranked:
-        results.append(Candidate(
-            url=c["url"],
-            title=c.get("title"),
-            snippet=c.get("snippet"),
-            price=c.get("price") or c.get("price_hint"),
-            currency=c.get("currency"),
-            has_price=bool(c.get("price") or c.get("price_in_card")),
-            fresh=c.get("fresh"),
-            llm_confidence=c.get("llm_confidence", 0.0),
-            freshness_signal=c.get("freshness_signal", "unknown"),
-            flags=c.get("flags", []),
-        ))
+        results.append(
+            Candidate(
+                url=c["url"],
+                title=c.get("title"),
+                snippet=c.get("snippet"),
+                price=c.get("price") or c.get("price_hint"),
+                currency=c.get("currency"),
+                has_price=bool(c.get("price") or c.get("price_in_card")),
+                fresh=c.get("fresh"),
+                llm_confidence=c.get("llm_confidence", 0.0),
+                freshness_signal=c.get("freshness_signal", "unknown"),
+                flags=c.get("flags", []),
+            )
+        )
 
     elapsed_ms = int((time.time() - t_start) * 1000)
 

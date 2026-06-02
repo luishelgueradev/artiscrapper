@@ -1,0 +1,17 @@
+services:
+  artiscrapper:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/cache.db:/app/cache.db  # sqlite bind-mount (DEPLOY-06)
+    environment:
+      - CACHE_DB_PATH=/app/cache.db
+      - LLM_ROUTER_URL=http://host.docker.internal:3210
+      - LLM_ROUTER_BEARER_TOKEN=${LLM_ROUTER_BEARER_TOKEN}
+      - GOOGLE_MIN_INTERVAL_S=60
+      - BROWSER_RECYCLE_AFTER=200
+      - LLM_CONCURRENCY=4
+      - LOG_JSON=true
+      - LOG_LEVEL=INFO
+    init: true  # equivalent to tini if not using ENTRYPOINT tini

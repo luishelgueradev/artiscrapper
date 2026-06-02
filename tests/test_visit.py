@@ -2,10 +2,10 @@
 Visit pass tests — plan 02-02 Wave 2.
 VISIT-01..08 requirements.
 """
+
 import pathlib
 
 import httpx
-import pytest
 import respx
 from selectolax.parser import HTMLParser
 
@@ -13,15 +13,14 @@ from src.artiscrapper.visit import (
     AR_PRICE_PATTERN,
     classify_response,
     extract_jsonld_product,
-    extract_price_regex,
-    visit_candidates,
     extract_product,
+    visit_candidates,
 )
-
 
 # ──────────────────────────────────────────
 # VISIT-05: classify_response
 # ──────────────────────────────────────────
+
 
 def test_classify_soft404():
     """VISIT-05: classify_response returns 'dead' for redirect-to-home soft-404."""
@@ -55,20 +54,25 @@ def test_classify_soft404_path():
 def test_classify_4xx():
     """VISIT-05: classify_response returns 'failed' for 4xx responses."""
     request = httpx.Request("GET", "https://store.com/product/123")
-    resp = httpx.Response(404, content=b"Not Found", headers={"content-type": "text/html"}, request=request)
+    resp = httpx.Response(
+        404, content=b"Not Found", headers={"content-type": "text/html"}, request=request
+    )
     assert classify_response(resp) == "failed"
 
 
 def test_classify_500():
     """VISIT-05: classify_response returns 'failed' for 5xx responses."""
     request = httpx.Request("GET", "https://store.com/product/123")
-    resp = httpx.Response(503, content=b"Service Unavailable", headers={"content-type": "text/html"}, request=request)
+    resp = httpx.Response(
+        503, content=b"Service Unavailable", headers={"content-type": "text/html"}, request=request
+    )
     assert classify_response(resp) == "failed"
 
 
 # ──────────────────────────────────────────
 # VISIT-06: extractor cascade
 # ──────────────────────────────────────────
+
 
 def test_extractor_catalog_fixtures():
     """
@@ -78,9 +82,15 @@ def test_extractor_catalog_fixtures():
     catalog_dir = pathlib.Path(__file__).parent / "fixtures" / "catalog"
     # Falabella is regex-fallback per SPIKE.md; the other 9 are jsonld-sufficient
     jsonld_hosts = [
-        "argautopartes_com_ar", "autodo_com_ar", "casasusy_com_ar",
-        "dphidraulica_com_ar", "lspalermo_com_ar", "martinmorris_ar",
-        "mayoristafrog_com_ar", "mipol_com_ar", "reps_com_ar",
+        "argautopartes_com_ar",
+        "autodo_com_ar",
+        "casasusy_com_ar",
+        "dphidraulica_com_ar",
+        "lspalermo_com_ar",
+        "martinmorris_ar",
+        "mayoristafrog_com_ar",
+        "mipol_com_ar",
+        "reps_com_ar",
     ]
     for host in jsonld_hosts:
         fixture = catalog_dir / host / "product-01.html"
@@ -98,9 +108,15 @@ def test_extractor_full_cascade_has_price():
     """
     catalog_dir = pathlib.Path(__file__).parent / "fixtures" / "catalog"
     jsonld_hosts = [
-        "argautopartes_com_ar", "autodo_com_ar", "casasusy_com_ar",
-        "dphidraulica_com_ar", "lspalermo_com_ar", "martinmorris_ar",
-        "mayoristafrog_com_ar", "mipol_com_ar", "reps_com_ar",
+        "argautopartes_com_ar",
+        "autodo_com_ar",
+        "casasusy_com_ar",
+        "dphidraulica_com_ar",
+        "lspalermo_com_ar",
+        "martinmorris_ar",
+        "mayoristafrog_com_ar",
+        "mipol_com_ar",
+        "reps_com_ar",
     ]
     for host in jsonld_hosts:
         fixture = catalog_dir / host / "product-01.html"
@@ -139,6 +155,7 @@ def test_ar_price_regex_pesos():
 # VISIT-08: MELI guard
 # ──────────────────────────────────────────
 
+
 async def test_meli_guard():
     """VISIT-08: MELI host guard fires on any *.mercadolibre.* URL without HTTP call."""
     meli_url = "https://www.mercadolibre.com.ar/MLA-123456-filtro-aceite-_JM"
@@ -158,8 +175,6 @@ async def test_meli_guard_no_http():
     """VISIT-08: MELI guard returns immediately — no HTTP calls are made."""
     meli_url = "https://articulo.mercadolibre.com.ar/MLA-999-test"
     candidate = {"url": meli_url, "title": "Test", "flags": []}
-
-    call_count = 0
 
     with respx.mock:
         # If any HTTP call is attempted, respx will raise (no routes defined)
