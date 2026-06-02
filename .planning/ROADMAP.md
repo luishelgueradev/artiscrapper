@@ -20,7 +20,7 @@ The architecture survives research with **13 LOCKED deviations** from the PRD (D
 - Decimal phases (e.g. 2.1): Reserved for urgent INSERTED work post-execution
 
 - [x] **Phase 1: Spike & Empirical Validation** - Answer 12 Phase-0-spike questions, capture fixtures, deliver Go/No-Go (no production code) (completed 2026-06-01)
-- [ ] **Phase 2: MVP** - Endpoint `/search` end-to-end with all 53 v1 requirements, Docker image, tests, validated against PRD §10 success criteria
+- [x] **Phase 2: MVP** - Endpoint `/search` end-to-end with all 53 v1 requirements, Docker image, tests, validated against PRD §10 success criteria (completed 2026-06-02)
 - [ ] **Phase 3: Robustness** - Prometheus metrics, Sentry, rate-limit per API-key, challenge detection + backoff, degraded mode, fixture-based integration suite
 - [ ] **Phase 4: Production Operations** - Grafana dashboards, Loki, cache invalidation endpoint, tracing — only on demand from prod telemetry
 - [ ] **Phase 5: Expansion** - Per-supplier adapters, residential proxy, async+SSE, multi-tenant auth — deferred until Sánchez grows past current scope
@@ -93,7 +93,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-03-PLAN.md — Observability + deploy + tests — structlog with `merge_contextvars` + correlation_id binding (OBS-03), `asgi-correlation-id` middleware (OBS-04), allow-list whitelist for `_log_scrape` (OBS-05), `/health` cheap + `/health/deep` real (OBS-01, OBS-02, D13), inline counters `artiscrapper_llm_fallback_total{reason}` + `artiscrapper_visit_failed_total{host}` (OBS-06); Dockerfile multi-stage with `cloakhq/cloakbrowser:0.3.31` base + Chromium pin `chromium-v146.0.7680.177.5` (DEPLOY-01, DEPLOY-02), `tini`/`--init` (DEPLOY-04), `uv sync --locked` + `uv.lock` checked-in (DEPLOY-05), CI assertion that uvloop is absent (D6 foot-gun, DEPLOY-03, DEPLOY-05), `compose.yml` for dev with sqlite bind-mount (DEPLOY-06); parser unit tests against the Phase 1 SERP fixtures, LLM integration tests with `respx` mock (NF-02), `pytest tests/ -x -q` green, `ruff` clean, `mypy --strict` on public modules (NF-03), end-to-end test that hits dev-box `/search?q=pelota+playera+quico` and asserts PRD §10 (NF-01). Covers DEPLOY-01..06, OBS-01..06, NF-01..04.
+- [x] 02-03-PLAN.md — Observability + deploy + tests — structlog with `merge_contextvars` + correlation_id binding (OBS-03), `asgi-correlation-id` middleware (OBS-04), allow-list whitelist for `_log_scrape` (OBS-05), `/health` cheap + `/health/deep` real (OBS-01, OBS-02, D13), inline counters `artiscrapper_llm_fallback_total{reason}` + `artiscrapper_visit_failed_total{host}` (OBS-06); Dockerfile multi-stage with `cloakhq/cloakbrowser:0.3.31` base + Chromium pin `chromium-v146.0.7680.177.5` (DEPLOY-01, DEPLOY-02), `tini`/`--init` (DEPLOY-04), `uv sync --locked` + `uv.lock` checked-in (DEPLOY-05), CI assertion that uvloop is absent (D6 foot-gun, DEPLOY-03, DEPLOY-05), `compose.yml` for dev with sqlite bind-mount (DEPLOY-06); parser unit tests against the Phase 1 SERP fixtures, LLM integration tests with `respx` mock (NF-02), `pytest tests/ -x -q` green, `ruff` clean, `mypy --strict` on public modules (NF-03), end-to-end test that hits dev-box `/search?q=pelota+playera+quico` and asserts PRD §10 (NF-01). Covers DEPLOY-01..06, OBS-01..06, NF-01..04.
 
 **Duration**: 2-3 days (matches PRD §7 Fase 1 estimate)
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
-| 2. MVP | 2/3 | In Progress|  |
+| 2. MVP | 3/3 | Complete   | 2026-06-02 |
 | 3. Robustness | 0/2 | Not started | - |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
