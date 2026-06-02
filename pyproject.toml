@@ -38,6 +38,7 @@ packages = ["src/artiscrapper"]
 asyncio_mode = "auto"
 markers = ["e2e: live network tests (skipped by default)"]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py312"
