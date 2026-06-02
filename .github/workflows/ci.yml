@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Ruff lint
+        run: uv run ruff check src/ tests/
+
+      - name: Ruff format check
+        run: uv run ruff format --check src/ tests/
+
+      - name: Mypy strict type check
+        env:
+          LLM_ROUTER_BEARER_TOKEN: ci-placeholder
+        run: uv run mypy --strict src/artiscrapper/
+
+      - name: D6 uvloop absence assertion (CI gate — DEPLOY-05)
+        run: |
+          # grep exits 1 if uvloop NOT found (correct — we want uvloop absent)
+          # The || ensures the step exits 0 when uvloop is absent (grep returns 1)
+          grep -rE 'uvloop' pyproject.toml uv.lock && echo "FAIL: uvloop found — D6 foot-gun!" && exit 1 || echo "OK: uvloop absent"
+
+      - name: D6 Dockerfile CMD assertion (CI gate — DEPLOY-03)
+        run: |
+          grep -q 'loop asyncio' Dockerfile && grep -q 'workers 1' Dockerfile || { echo "FAIL: Dockerfile CMD missing --loop asyncio --workers 1"; exit 1; }
+          echo "OK: Dockerfile CMD has --loop asyncio --workers 1"
+
+      - name: Pytest (unit + integration, skip e2e)
+        env:
+          LLM_ROUTER_BEARER_TOKEN: ci-placeholder
+        run: uv run pytest tests/ -x -q -k "not e2e"

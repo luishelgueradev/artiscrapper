@@ -7,6 +7,7 @@ D2 FOOT-GUN: LLMVerdict.fallback() confidence=0.3 IS dropped at the <0.4 cut in 
 LLM-08/OBS-05: NEVER log prompt content, response content, bearer_token, candidate fields.
 LLM-03: module-level asyncio.Semaphore(LLM_CONCURRENCY=4) in curate_candidates.
 """
+
 import asyncio
 import json
 from typing import Literal
@@ -217,10 +218,9 @@ async def curate_candidates(
     dropped_count = 0
 
     async with httpx.AsyncClient(http2=True) as client:
-        verdicts = await asyncio.gather(*[
-            classify_candidate(client, c, sem, router_url, bearer_token)
-            for c in candidates
-        ])
+        verdicts = await asyncio.gather(
+            *[classify_candidate(client, c, sem, router_url, bearer_token) for c in candidates]
+        )
 
     for candidate, verdict in zip(candidates, verdicts):
         # Track fallback for degraded mode detection (LLM-05)

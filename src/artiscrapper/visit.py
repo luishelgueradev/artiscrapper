@@ -7,6 +7,7 @@ VISIT-04: DEFAULT_HEADERS (D11). VISIT-05: classify_response. VISIT-06: extracto
 VISIT-07: no retry on failure. VISIT-08: MELI guard (FIRST check in visit_one).
 D12: HAND-ROLL confirmed 9/10 jsonld-sufficient. Do NOT import extruct.
 """
+
 import asyncio
 import json
 import re
@@ -39,7 +40,7 @@ DEFAULT_HEADERS = {
     "Sec-Ch-Ua-Platform": '"Windows"',
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "cross-site",   # D11: came-from-google signal
+    "Sec-Fetch-Site": "cross-site",  # D11: came-from-google signal
     "Sec-Fetch-User": "?1",
     "Upgrade-Insecure-Requests": "1",
     "Referer": "https://www.google.com/",  # D11 invariant
@@ -47,8 +48,13 @@ DEFAULT_HEADERS = {
 
 # VISIT-05: dead page markers
 DEAD_MARKERS = (
-    "404", "no encontrad", "not found", "no disponible",
-    "producto agotado", "sold out", "producto no existe",
+    "404",
+    "no encontrad",
+    "not found",
+    "no disponible",
+    "producto agotado",
+    "sold out",
+    "producto no existe",
 )
 SOFT_404_PATHS = {"", "/", "/home", "/index.html", "/buscar", "/search", "/s"}
 
@@ -56,13 +62,13 @@ SOFT_404_PATHS = {"", "/", "/home", "/index.html", "/buscar", "/search", "/s"}
 # Three alternate groups: ARS/ar$ prefix, pesos prefix, dollar-sign only
 # Based on Pattern 6 from 02-RESEARCH.md — extended to handle ARS-without-dollar format
 AR_PRICE_PATTERN = re.compile(
-    r'(?:'
-    r'(?:ARS|ar\$)\s*[^a-zA-Z\n]{0,3}?(\d[\d.,]*\d|\d+)'  # ARS NNN or ar$ NNN
-    r'|'
-    r'pesos\s+(\d[\d.,]*\d|\d+)'                              # pesos NNN
-    r'|'
-    r'[$]\s*(\d[\d.,]*\d|\d+)'                               # $NNN or $ NNN
-    r')',
+    r"(?:"
+    r"(?:ARS|ar\$)\s*[^a-zA-Z\n]{0,3}?(\d[\d.,]*\d|\d+)"  # ARS NNN or ar$ NNN
+    r"|"
+    r"pesos\s+(\d[\d.,]*\d|\d+)"  # pesos NNN
+    r"|"
+    r"[$]\s*(\d[\d.,]*\d|\d+)"  # $NNN or $ NNN
+    r")",
     re.IGNORECASE,
 )
 
@@ -100,6 +106,7 @@ def classify_response(response: httpx.Response) -> str:
 # Pattern 6: Hand-rolled extractor cascade (D12 HAND-ROLL confirmed)
 # VISIT-06 — verbatim from 02-RESEARCH.md lines 958-1063
 # ──────────────────────────────────────────
+
 
 def extract_jsonld_product(tree: HTMLParser) -> dict | None:
     """
@@ -162,9 +169,7 @@ def extract_microdata_product(tree: HTMLParser) -> dict | None:
     if price_el:
         price_val = price_el.attributes.get("content") or price_el.text(strip=True)
         currency_el = product_el.css_first('[itemprop="priceCurrency"]')
-        currency = (
-            currency_el.attributes.get("content", "ARS") if currency_el else "ARS"
-        )
+        currency = currency_el.attributes.get("content", "ARS") if currency_el else "ARS"
         return {"price": price_val, "currency": currency}
     return None
 
@@ -254,7 +259,11 @@ def extract_product(html: str) -> dict | None:
 
         # Get currency from offers
         currency = "ARS"
-        offers_obj = offers if isinstance(offers, dict) else (offers[0] if isinstance(offers, list) and offers else {})
+        offers_obj = (
+            offers
+            if isinstance(offers, dict)
+            else (offers[0] if isinstance(offers, list) and offers else {})
+        )
         if isinstance(offers_obj, dict):
             currency = offers_obj.get("priceCurrency", "ARS")
 
@@ -262,18 +271,35 @@ def extract_product(html: str) -> dict | None:
             "price": price,
             "currency": currency,
             "name": result.get("name"),
-            "availability": offers_obj.get("availability") if isinstance(offers_obj, dict) else None,
+            "availability": offers_obj.get("availability")
+            if isinstance(offers_obj, dict)
+            else None,
             "date_modified": result.get("dateModified"),
         }
     if result := extract_og_product(tree):
-        return {"price": result.get("price"), "currency": result.get("currency", "ARS"),
-                "name": result.get("name"), "availability": None, "date_modified": None}
+        return {
+            "price": result.get("price"),
+            "currency": result.get("currency", "ARS"),
+            "name": result.get("name"),
+            "availability": None,
+            "date_modified": None,
+        }
     if result := extract_microdata_product(tree):
-        return {"price": result.get("price"), "currency": result.get("currency", "ARS"),
-                "name": None, "availability": None, "date_modified": None}
+        return {
+            "price": result.get("price"),
+            "currency": result.get("currency", "ARS"),
+            "name": None,
+            "availability": None,
+            "date_modified": None,
+        }
     if result := extract_price_regex(tree):
-        return {"price": result.get("price"), "currency": "ARS",
-                "name": None, "availability": None, "date_modified": None}
+        return {
+            "price": result.get("price"),
+            "currency": "ARS",
+            "name": None,
+            "availability": None,
+            "date_modified": None,
+        }
     return None
 
 
@@ -281,6 +307,7 @@ def extract_product(html: str) -> dict | None:
 # Visit orchestrator (VISIT-02: http2 + semaphores)
 # Pattern 4 from 02-RESEARCH.md lines 683-737
 # ──────────────────────────────────────────
+
 
 async def visit_candidates(
     candidates: list[dict],
@@ -293,9 +320,7 @@ async def visit_candidates(
     VISIT-03: visit_timeout_s is the per-request timeout (passed from SearchRequest).
     """
     global_sem = asyncio.Semaphore(GLOBAL_VISIT_CAP)
-    host_sems: dict[str, asyncio.Semaphore] = defaultdict(
-        lambda: asyncio.Semaphore(PER_HOST_CAP)
-    )
+    host_sems: dict[str, asyncio.Semaphore] = defaultdict(lambda: asyncio.Semaphore(PER_HOST_CAP))
 
     async def visit_one(candidate: dict) -> dict:
         url = candidate["url"]
@@ -307,7 +332,10 @@ async def visit_candidates(
             return candidate
 
         # VISIT-01: SECOND CHECK — skip-if-you-can
-        if candidate.get("price") is not None or candidate.get("freshness_signal") == "live_marketplace":
+        if (
+            candidate.get("price") is not None
+            or candidate.get("freshness_signal") == "live_marketplace"
+        ):
             return candidate
 
         host = urlparse(url).netloc
@@ -321,9 +349,7 @@ async def visit_candidates(
                     timeout=httpx.Timeout(
                         connect=3.0, read=float(visit_timeout_s), write=3.0, pool=2.0
                     ),
-                    limits=httpx.Limits(
-                        max_connections=20, max_keepalive_connections=10
-                    ),
+                    limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
                 ) as client:
                     resp = await client.get(url)
             except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError):

@@ -4,13 +4,14 @@ OBS-01: GET /health — cheap liveness check.
 OBS-02: GET /health/deep — real Cloak nav + LLM HEAD probe.
 Pattern 11 from 02-RESEARCH.md (lines 1233-1293).
 """
+
 import os
 import tempfile
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 import respx
-import httpx
 
 # Set required env vars before importing app.
 # CACHE_DB_PATH must point to a writable location so lifespan aiosqlite.connect works.
@@ -20,6 +21,7 @@ os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-health")
 os.environ["CACHE_DB_PATH"] = _tmp_db.name
 
 from fastapi.testclient import TestClient  # noqa: E402
+
 from src.artiscrapper.main import app  # noqa: E402
 
 
@@ -77,9 +79,7 @@ def test_health_deep_shape(test_client):
     """OBS-02: GET /health/deep returns cloak and llm status fields with mocked Cloak nav."""
     # Mock the LLM /healthz response (SPIKE.md §LLM confirmed /healthz with z)
     llm_url = os.environ.get("LLM_ROUTER_URL", "http://127.0.0.1:3210")
-    respx.get(f"{llm_url}/healthz").mock(
-        return_value=httpx.Response(200)
-    )
+    respx.get(f"{llm_url}/healthz").mock(return_value=httpx.Response(200))
 
     resp = test_client.get("/health/deep")
     assert resp.status_code == 200

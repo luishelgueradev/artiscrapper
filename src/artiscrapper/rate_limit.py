@@ -4,6 +4,7 @@ Pattern 1 GoogleRateLimiter section from 02-RESEARCH.md.
 BROWSER-04: Serializes Google fetches, ensures >= GOOGLE_MIN_INTERVAL_S between fetches.
 T-02-01-06: DoS mitigation — hard 60s floor between Google fetches.
 """
+
 import asyncio
 import time
 

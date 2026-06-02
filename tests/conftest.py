@@ -3,11 +3,13 @@ Shared test fixtures.
 Pattern 1 test override block from 02-RESEARCH.md (lines 404-420).
 asyncio_mode="auto" is set in pyproject.toml — no need for @pytest.mark.asyncio.
 """
-import pytest
-import aiosqlite
+
 from unittest.mock import AsyncMock, MagicMock
 
-from src.artiscrapper.cache import init_schema, PRAGMAS
+import aiosqlite
+import pytest
+
+from src.artiscrapper.cache import PRAGMAS, init_schema
 
 
 @pytest.fixture

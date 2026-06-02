@@ -4,6 +4,7 @@ Pattern 2 from 02-RESEARCH.md (lines 427-551) — implemented verbatim.
 CACHE-01: WAL schema. CACHE-02: gzip BLOB. CACHE-03: sha256 key. CACHE-04: lazy TTL.
 T-02-01-02: Parameterized ? placeholders everywhere — no string interpolation in SQL.
 """
+
 import asyncio
 import gzip
 import hashlib
@@ -15,13 +16,13 @@ import unicodedata
 import aiosqlite
 
 PRAGMAS = [
-    "PRAGMA journal_mode=WAL",         # concurrent reads while writing
-    "PRAGMA synchronous=NORMAL",       # safe + ~2x faster than FULL
+    "PRAGMA journal_mode=WAL",  # concurrent reads while writing
+    "PRAGMA synchronous=NORMAL",  # safe + ~2x faster than FULL
     "PRAGMA temp_store=MEMORY",
-    "PRAGMA mmap_size=268435456",      # 256 MB mmap
-    "PRAGMA cache_size=-32000",        # 32 MB page cache
+    "PRAGMA mmap_size=268435456",  # 256 MB mmap
+    "PRAGMA cache_size=-32000",  # 32 MB page cache
     "PRAGMA wal_autocheckpoint=1000",  # default: 1000 pages = ~4 MB
-    "PRAGMA busy_timeout=5000",        # wait 5s on contention
+    "PRAGMA busy_timeout=5000",  # wait 5s on contention
     "PRAGMA foreign_keys=ON",
 ]
 
@@ -70,10 +71,11 @@ async def get_cached(cache: aiosqlite.Connection, cache_key: str) -> dict | None
     NEVER DELETE in the hot path — let prune_loop sweep.
     Parameterized ? placeholder used (T-02-01-02).
     """
-    row = await (await cache.execute(
-        "SELECT response_json, expires_at FROM query_cache WHERE cache_key=?",
-        (cache_key,)
-    )).fetchone()
+    row = await (
+        await cache.execute(
+            "SELECT response_json, expires_at FROM query_cache WHERE cache_key=?", (cache_key,)
+        )
+    ).fetchone()
     if row is None:
         return None
     response_json, expires_at = row
@@ -109,8 +111,7 @@ async def set_cached(
              created_at, expires_at, bytes_total)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (cache_key, query, query_norm, resp_json,
-         blob_a, blob_b, now, now + ttl_s, bytes_total),
+        (cache_key, query, query_norm, resp_json, blob_a, blob_b, now, now + ttl_s, bytes_total),
     )
     await cache.commit()
 
@@ -123,9 +124,7 @@ async def prune_loop(cache: aiosqlite.Connection) -> None:
     while True:
         await asyncio.sleep(3600)  # hourly
         now = int(time.time())
-        await cache.execute(
-            "DELETE FROM query_cache WHERE expires_at < ?", (now,)
-        )
+        await cache.execute("DELETE FROM query_cache WHERE expires_at < ?", (now,))
         await cache.commit()
         # Size cap: 2 GB total raw bytes
         cur = await cache.execute("SELECT SUM(bytes_total) FROM query_cache")

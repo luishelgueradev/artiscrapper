@@ -6,7 +6,8 @@ SEARCH-03: pws=0&safe=off (D3). SEARCH-04: parser cascade with alert (D4). SEARC
 SEARCH-06: junk-domain blocklist (D9). SEARCH-07: re-rank.
 OBS-05: NEVER log title, snippet, url, or reason.
 """
-from urllib.parse import urlencode, parse_qs, urlparse, urlunparse, quote
+
+from urllib.parse import parse_qs, quote, urlencode, urlparse, urlunparse
 
 import structlog
 from selectolax.parser import HTMLParser
@@ -17,6 +18,7 @@ log = structlog.get_logger()
 # ──────────────────────────────────────────
 # URL building (SEARCH-03 / D3)
 # ──────────────────────────────────────────
+
 
 def build_serp_url(query: str, *, meli: bool = False) -> str:
     """
@@ -38,14 +40,14 @@ def build_serp_url(query: str, *, meli: bool = False) -> str:
 # ──────────────────────────────────────────
 
 ORGANIC_SELECTORS = [
-    "div.MjjYud div.tF2Cxc",       # 2024-2026 primary (Phase 1 confirmed all 10 SERP fixtures)
-    "div.MjjYud",                  # 2025+ wrapper fallback
-    "div.g",                       # legacy
-    "div[data-sokoban-container]", # 2025-2026 experimental
-    "div[data-snc]",               # mobile variants
+    "div.MjjYud div.tF2Cxc",  # 2024-2026 primary (Phase 1 confirmed all 10 SERP fixtures)
+    "div.MjjYud",  # 2025+ wrapper fallback
+    "div.g",  # legacy
+    "div[data-sokoban-container]",  # 2025-2026 experimental
+    "div[data-snc]",  # mobile variants
 ]
 CAROUSEL_SELECTORS = [
-    "div.Ez5pwe",                          # carousel (Phase 1 fixtures confirmed present)
+    "div.Ez5pwe",  # carousel (Phase 1 fixtures confirmed present)
     "g-scrolling-carousel div[role='listitem']",
 ]
 
@@ -98,7 +100,9 @@ def _extract_carousel(node) -> dict | None:
     title_el = node.css_first("div.title") or node.css_first("span") or node.css_first("h3")
     title = title_el.text(strip=True) if title_el else None
 
-    price_el = node.css_first("span.price") or node.css_first("div.price") or node.css_first(".precio")
+    price_el = (
+        node.css_first("span.price") or node.css_first("div.price") or node.css_first(".precio")
+    )
     price_in_card = price_el.text(strip=True) if price_el else None
 
     return {
@@ -137,14 +141,16 @@ def _extract_by_h3(tree: HTMLParser) -> list[dict]:
         href = link.attributes.get("href", "")
         if not href.startswith("http"):
             continue
-        candidates.append({
-            "url": href,
-            "title": h3.text(strip=True),
-            "snippet": None,
-            "price_in_card": None,
-            "has_price": False,
-            "flags": ["h3_fallback"],
-        })
+        candidates.append(
+            {
+                "url": href,
+                "title": h3.text(strip=True),
+                "snippet": None,
+                "price_in_card": None,
+                "has_price": False,
+                "flags": ["h3_fallback"],
+            }
+        )
     return candidates
 
 
@@ -187,10 +193,21 @@ def parse_serp(html: str) -> list[dict]:
 # URL canonicalization + dedupe (SEARCH-05)
 # ──────────────────────────────────────────
 
-STRIP_PARAMS = frozenset({
-    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
-    "fbclid", "gclid", "ved", "usg", "sa", "ei",
-})
+STRIP_PARAMS = frozenset(
+    {
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content",
+        "utm_term",
+        "fbclid",
+        "gclid",
+        "ved",
+        "usg",
+        "sa",
+        "ei",
+    }
+)
 
 
 def canonicalize_url(url: str) -> str:
@@ -200,14 +217,16 @@ def canonicalize_url(url: str) -> str:
     """
     p = urlparse(url)
     qs = {k: v for k, v in parse_qs(p.query).items() if k not in STRIP_PARAMS}
-    return urlunparse((
-        p.scheme,
-        p.netloc.lower().rstrip("/"),
-        p.path.rstrip("/") or "/",
-        p.params,
-        urlencode(qs, doseq=True),
-        "",  # strip fragment
-    ))
+    return urlunparse(
+        (
+            p.scheme,
+            p.netloc.lower().rstrip("/"),
+            p.path.rstrip("/") or "/",
+            p.params,
+            urlencode(qs, doseq=True),
+            "",  # strip fragment
+        )
+    )
 
 
 def dedupe(candidates: list[dict]) -> list[dict]:
@@ -230,12 +249,19 @@ def dedupe(candidates: list[dict]) -> list[dict]:
 # Junk-domain blocklist (SEARCH-06 / D9)
 # ──────────────────────────────────────────
 
-JUNK_DOMAINS = frozenset({
-    "youtube.com", "www.youtube.com",
-    "reddit.com", "www.reddit.com",
-    "wikipedia.org", "es.wikipedia.org", "www.wikipedia.org",
-    "medium.com", "www.medium.com",
-})
+JUNK_DOMAINS = frozenset(
+    {
+        "youtube.com",
+        "www.youtube.com",
+        "reddit.com",
+        "www.reddit.com",
+        "wikipedia.org",
+        "es.wikipedia.org",
+        "www.wikipedia.org",
+        "medium.com",
+        "www.medium.com",
+    }
+)
 JUNK_DOMAIN_SUFFIXES = (".fandom.com", ".gov.ar", ".medium.com")
 
 
@@ -255,14 +281,17 @@ def is_junk(url: str) -> bool:
 # Re-rank (SEARCH-07)
 # ──────────────────────────────────────────
 
+
 def rerank(candidates: list[dict], max_results: int = 15) -> list[dict]:
     """
     Re-rank by (has_price DESC, fresh DESC, llm_confidence DESC).
     §Code Examples lines 1568-1576.
     """
+
     def sort_key(c: dict):
         has_price = 1 if c.get("price") else 0
         fresh = 1 if c.get("fresh") is True else 0
         confidence = c.get("llm_confidence", 0.0)
         return (has_price, fresh, confidence)
+
     return sorted(candidates, key=sort_key, reverse=True)[:max_results]

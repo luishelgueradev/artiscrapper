@@ -4,6 +4,7 @@ PRD §3 response shape: {query, results, metadata}
 SearchRequest.query field name is "query" — NOT "q" (SEARCH-01).
 Metadata has 9 fields: 8 from SEARCH-08 + block_detected (BROWSER-05).
 """
+
 from pydantic import BaseModel, Field
 
 
