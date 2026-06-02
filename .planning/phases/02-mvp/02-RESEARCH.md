@@ -1703,22 +1703,25 @@ This section is the input for `02-VALIDATION.md` (Nyquist validation contract fo
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **asgi-correlation-id 5.0.0 import path change**
    - What we know: PyPI current is 5.0.0; briefs reference 4.3.4 with `from asgi_correlation_id.context import correlation_id`
    - What's unclear: exact import path in 5.0.0 (may be same or changed)
    - Recommendation: plan 02-03 first task should `pip install asgi-correlation-id==5.0.0 && python -c "from asgi_correlation_id.context import correlation_id"` to confirm before wiring; the Pattern 3 code has a try/except fallback for both
+   - **RESOLVED:** Pattern 3 ships a try/except fallback covering 4.3.4 and 5.0.0 import paths; 02-01 Task 1 verifies the import at first wire.
 
 2. **launch_async() exact kwargs for headless mode**
    - What we know: Phase 1 used `headless=True`; SPIKE.md confirms the call worked
    - What's unclear: full accepted kwarg set for 0.3.31 (proxy, channel, args, etc.)
    - Recommendation: plan 02-01 first task reads cloakbrowser 0.3.31 README/source before writing browser.py; safe to start with `await launch_async(headless=True)` and add args only if needed
+   - **RESOLVED:** SPIKE.md §Browser confirms `await launch_async(headless=True)` works in 0.3.31; 02-01 Task 3 uses this signature.
 
 3. **LLM router /healthz vs /health endpoint**
    - What we know: SPIKE.md §LLM says `endpoint_ok: YES (200 from /healthz with bearer)`
    - What's unclear: whether `/health` (without z) also exists and which to use in /health/deep
    - Recommendation: use `/healthz` as confirmed by Phase 1 spike; add a try-both fallback in health_deep
+   - **RESOLVED:** SPIKE.md §LLM router confirms /healthz with bearer returns 200; 02-03 Task 2 health/deep uses /healthz.
 
 ---
 

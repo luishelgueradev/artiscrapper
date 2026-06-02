@@ -83,8 +83,16 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 02-01-PLAN.md — Core pipeline — scaffold FastAPI app with `lifespan` (Cloak singleton + recycle loop + sqlite cache init), implement `build_serp_url()` (D3: `pws=0&safe=off`, no `num/tbm/udm/site:`), parser cascade (`div.tF2Cxc` → `div.Ez5pwe` → `div.MjjYud` → h3-anchored fallback with `parse.cascade.exhausted` alert per D4), `_detect_block()` (BROWSER-05), URL canonicalization + dedupe (SEARCH-05), heuristic junk-domain blocklist pre-filter (D9, SEARCH-06), re-rank logic (SEARCH-07), and Pydantic request/response models (SEARCH-01, SEARCH-08). Covers SEARCH-01..08, BROWSER-01..05.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 02-02-PLAN.md — LLM curator + visit pass + freshness + cache — implement `LLMVerdict` Pydantic model with `fallback()` classmethod (LLM-02), Spanish system prompt + 2 few-shot examples (LLM-01), `asyncio.Semaphore(LLM_CONCURRENCY=4)` orchestration (LLM-03), 5s timeout + `llm_fail:*` reason taxonomy (LLM-04), `<0.4` cutoff + `metadata.llm_degraded` surfacing (LLM-05 = D2 foot-gun), degraded-mode fallback to blocklist + price-in-card (LLM-06), router HEAD probe (LLM-07/08); visit pass with `httpx.AsyncClient(http2=True)` + global Semaphore(8) + per-host Semaphore(2) (VISIT-02, D5), realistic Chromium-146 headers + `Sec-Fetch-Site` + `Referer` (VISIT-04, D11), skip-if-you-can (VISIT-01), `classify_response()` for live-vs-dead (VISIT-05), hand-rolled JSON-LD + OG + microdata + AR-regex extractor in selectolax (VISIT-06, D12 — assuming Phase 1 spike confirms hand-roll), no-MELI-host invariant (VISIT-08), failure flags `skip_dead`/`visit_failed` no-retry (VISIT-07); freshness logic per FRESH-01..04; sqlite cache with `aiosqlite` + WAL + gzipped BLOB columns + lazy TTL + hourly prune loop + nightly checkpoint (CACHE-01..05, D7). Covers LLM-01..08, VISIT-01..08, FRESH-01..04, CACHE-01..05.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 02-03-PLAN.md — Observability + deploy + tests — structlog with `merge_contextvars` + correlation_id binding (OBS-03), `asgi-correlation-id` middleware (OBS-04), allow-list whitelist for `_log_scrape` (OBS-05), `/health` cheap + `/health/deep` real (OBS-01, OBS-02, D13), inline counters `artiscrapper_llm_fallback_total{reason}` + `artiscrapper_visit_failed_total{host}` (OBS-06); Dockerfile multi-stage with `cloakhq/cloakbrowser:0.3.31` base + Chromium pin `chromium-v146.0.7680.177.5` (DEPLOY-01, DEPLOY-02), `tini`/`--init` (DEPLOY-04), `uv sync --locked` + `uv.lock` checked-in (DEPLOY-05), CI assertion that uvloop is absent (D6 foot-gun, DEPLOY-03, DEPLOY-05), `compose.yml` for dev with sqlite bind-mount (DEPLOY-06); parser unit tests against the Phase 1 SERP fixtures, LLM integration tests with `respx` mock (NF-02), `pytest tests/ -x -q` green, `ruff` clean, `mypy --strict` on public modules (NF-03), end-to-end test that hits dev-box `/search?q=pelota+playera+quico` and asserts PRD §10 (NF-01). Covers DEPLOY-01..06, OBS-01..06, NF-01..04.
 
 **Duration**: 2-3 days (matches PRD §7 Fase 1 estimate)

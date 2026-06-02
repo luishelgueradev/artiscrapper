@@ -235,7 +235,7 @@ class LabelledCandidate(BaseModel):
 from pydantic import BaseModel, Field
 
 class SearchRequest(BaseModel):
-    q: str = Field(min_length=1, max_length=500)
+    query: str = Field(min_length=1, max_length=500)
     max_results: int = Field(default=15, ge=1, le=30)
     visit_timeout_s: int = Field(default=10, ge=3, le=30)
 
@@ -252,7 +252,7 @@ class Candidate(BaseModel):
     flags: list[str] = Field(default_factory=list)
 
 class Metadata(BaseModel):
-    # SEARCH-08: all 8 required metadata fields
+    # SEARCH-08: 8 required fields + block_detected (BROWSER-05) = 9 total
     elapsed_ms: int
     google_fetches: int = 2
     candidates_total: int = 0
@@ -261,9 +261,11 @@ class Metadata(BaseModel):
     visit_failed: int = 0
     cache_hit: bool = False
     llm_degraded: bool = False
+    block_detected: bool = False  # BROWSER-05: set true when _detect_block fires; defaults false
 
 class SearchResponse(BaseModel):
-    # SEARCH-01 field name = "results" (not "candidates" — match the public contract)
+    # PRD §3 response shape: {query, results, metadata}
+    query: str  # echo of the request query (PRD §3)
     results: list[Candidate]
     metadata: Metadata
 ```
