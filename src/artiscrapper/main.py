@@ -72,14 +72,26 @@ async def _recycle_browser_loop(app: FastAPI) -> None:
                 pass
             continue
         # Secondary heartbeat: catches SIGSTOP (is_connected() stays True for SIGSTOP)
+        # CR-02 fix: try/finally so ctx/page close even when wait_for raises
+        ctx = None
+        page = None
         try:
             ctx = await browser.new_context()
             page = await ctx.new_page()
             await asyncio.wait_for(page.evaluate("1"), timeout=5.0)
-            await page.close()
-            await ctx.close()
         except Exception as exc:
             log.warning("browser_heartbeat_failed", error=str(type(exc).__name__))
+            # Close the (possibly half-created) heartbeat context before recycling
+            if page is not None:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+            if ctx is not None:
+                try:
+                    await ctx.close()
+                except Exception:
+                    pass
             app.state.browser = await launch_async(headless=settings.HEADLESS)
             app.state.browser_uses = 0
             try:
@@ -87,6 +99,18 @@ async def _recycle_browser_loop(app: FastAPI) -> None:
             except Exception:
                 pass
             continue
+        else:
+            # Success path: close the heartbeat context cleanly
+            if page is not None:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+            if ctx is not None:
+                try:
+                    await ctx.close()
+                except Exception:
+                    pass
         # Recycle after N cold fetches (memory drift mitigation)
         if app.state.browser_uses >= settings.BROWSER_RECYCLE_AFTER:
             log.info("browser_recycle_start", uses=app.state.browser_uses)
@@ -192,7 +216,10 @@ async def health_deep(request: Request) -> dict:
     """
     out = await health(request)
     # Cloak deep: navigate about:blank and evaluate
+    # CR-02 fix: try/finally so ctx/page always close, even if goto/wait_for raises
     browser = request.app.state.browser
+    ctx = None
+    page = None
     try:
         ctx = await browser.new_context()
         page = await ctx.new_page()
@@ -201,11 +228,20 @@ async def health_deep(request: Request) -> dict:
             timeout=5.0,
         )
         out["cloak"] = "ok_deep"
-        await page.close()
-        await ctx.close()
     except Exception as exc:
         out["cloak"] = f"fail:{type(exc).__name__}"
         out["status"] = "degraded"
+    finally:
+        if page is not None:
+            try:
+                await page.close()
+            except Exception:
+                pass
+        if ctx is not None:
+            try:
+                await ctx.close()
+            except Exception:
+                pass
     # LLM deep: GET /healthz with bearer (SPIKE.md §LLM confirmed /healthz with z)
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
@@ -369,11 +405,14 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
         visit_failed_count = sum(1 for c in survivors if c.get("visit_failed"))
 
     # ── [8] Freshness assessment ──
+    # CR-01 fix: pass candidate as `extracted` so FRESH-02 can read date fields
+    # that visit_one stored via candidate.update(extracted). freshness.py also
+    # reads candidate["freshness_signal"] (set by curate_candidates) directly.
     for candidate in survivors:
         fresh_val = assess_freshness(
             candidate,
-            verdict=None,  # verdict not stored per-candidate; freshness_signal is in candidate
-            extracted=None,
+            verdict=None,
+            extracted=candidate,
         )
         candidate["fresh"] = fresh_val
 

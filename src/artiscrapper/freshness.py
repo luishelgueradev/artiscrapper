@@ -69,9 +69,15 @@ def assess_freshness(
     """
     url = candidate.get("url", "")
 
-    # FRESH-03: blog is already dropped by should_keep() / LLM-05
-    # If somehow a blog candidate reaches here, treat as unknown
-    if verdict is not None and getattr(verdict, "freshness_signal", None) == "blog":
+    # Read freshness_signal from candidate dict — set by curate_candidates from
+    # LLMVerdict.freshness_signal. The legacy `verdict` parameter is kept for
+    # backwards compatibility but candidate is the source of truth post-curate.
+    candidate_signal = candidate.get("freshness_signal") or (
+        getattr(verdict, "freshness_signal", None) if verdict is not None else None
+    )
+
+    # FRESH-03: blog is already dropped by should_keep() / LLM-05; defense in depth
+    if candidate_signal == "blog":
         return None
 
     # FRESH-01: MELI host + successful visit (200) → fresh=True
@@ -79,16 +85,18 @@ def assess_freshness(
         return True
 
     # FRESH-02: datePublished or dateModified within 90 days → fresh=True
-    if extracted:
-        date_str = extracted.get("date_modified") or extracted.get("datePublished")
-        dt = _parse_date(date_str)
-        if dt is not None:
-            now = datetime.now(tz=timezone.utc)
-            if now - dt <= timedelta(days=FRESHNESS_WINDOW_DAYS):
-                return True
+    # `extracted` may be the candidate dict itself (visit_one stores extracted
+    # fields directly on the candidate via candidate.update(extracted)).
+    source = extracted if extracted is not None else candidate
+    date_str = source.get("date_modified") or source.get("datePublished")
+    dt = _parse_date(date_str)
+    if dt is not None:
+        now = datetime.now(tz=timezone.utc)
+        if now - dt <= timedelta(days=FRESHNESS_WINDOW_DAYS):
+            return True
 
-    # Also check candidate directly for date fields (may have been set from LLM verdict)
-    if verdict is not None and getattr(verdict, "freshness_signal", None) == "live_marketplace":
+    # Live-marketplace signal (e.g., LLM identified a MELI/Tiendanube product page)
+    if candidate_signal == "live_marketplace":
         return True
 
     # FRESH-04: no signal → fresh=None (not False)
