@@ -17,6 +17,8 @@ import httpx
 import structlog
 from selectolax.parser import HTMLParser
 
+from .metrics import metrics
+
 log = structlog.get_logger()
 
 GLOBAL_VISIT_CAP = 8
@@ -326,9 +328,11 @@ async def visit_candidates(
                     resp = await client.get(url)
             except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError):
                 candidate["visit_failed"] = True
+                metrics.visit_failed_total[host] += 1  # OBS-06
                 return candidate
             except Exception:
                 candidate["visit_failed"] = True
+                metrics.visit_failed_total[host] += 1  # OBS-06
                 return candidate
 
             # VISIT-07: no retry on failure
@@ -338,6 +342,7 @@ async def visit_candidates(
                 return candidate
             if outcome == "failed":
                 candidate["visit_failed"] = True
+                metrics.visit_failed_total[host] += 1  # OBS-06
                 return candidate
 
             extracted = extract_product(resp.text)

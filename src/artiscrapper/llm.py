@@ -15,6 +15,8 @@ import httpx
 import structlog
 from pydantic import BaseModel, Field, ValidationError
 
+from .metrics import metrics
+
 log = structlog.get_logger()
 
 FreshnessSignal = Literal["live_marketplace", "static_catalog", "blog", "unknown"]
@@ -135,6 +137,7 @@ async def classify_candidate(
             raw = resp.json()["choices"][0]["message"]["content"]
             return LLMVerdict.model_validate_json(raw)
         except httpx.TimeoutException:
+            metrics.llm_fallback_total["timeout"] += 1  # OBS-06
             return LLMVerdict.fallback("timeout")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 503:
@@ -151,11 +154,15 @@ async def classify_candidate(
                     raw2 = resp2.json()["choices"][0]["message"]["content"]
                     return LLMVerdict.model_validate_json(raw2)
                 except Exception:
+                    metrics.llm_fallback_total["overload"] += 1  # OBS-06
                     return LLMVerdict.fallback("overload")
+            metrics.llm_fallback_total[f"http_{e.response.status_code}"] += 1  # OBS-06
             return LLMVerdict.fallback(f"http_{e.response.status_code}")
         except (json.JSONDecodeError, ValidationError, KeyError):
+            metrics.llm_fallback_total["malformed"] += 1  # OBS-06
             return LLMVerdict.fallback("malformed")
         except Exception:
+            metrics.llm_fallback_total["conn_error"] += 1  # OBS-06
             return LLMVerdict.fallback("conn_error")
 
 

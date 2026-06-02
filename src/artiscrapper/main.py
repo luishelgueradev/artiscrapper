@@ -28,6 +28,7 @@ from .config import settings
 from .freshness import assess_freshness
 from .llm import curate_candidates, router_health_check
 from .logging_setup import configure_logging
+from .metrics import metrics
 from .models import Candidate, Metadata, SearchRequest, SearchResponse
 from .rate_limit import GoogleRateLimiter
 from .search import build_serp_url, dedupe, is_junk, parse_serp, rerank
@@ -285,7 +286,9 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
     # ── [3] detect_block ──
     if block_a or block_b:
         block_detected = True
-        log.warning("google_fetch_blocked", reason=block_a or block_b)
+        block_reason = block_a or block_b
+        log.warning("google_fetch_blocked", reason=block_reason)
+        metrics.block_detected_total[block_reason] += 1  # OBS-06
         elapsed_ms = int((time.time() - t_start) * 1000)
         return SearchResponse(
             query=body.query,
