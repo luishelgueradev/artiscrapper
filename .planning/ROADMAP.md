@@ -85,7 +85,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Core pipeline — scaffold FastAPI app with `lifespan` (Cloak singleton + recycle loop + sqlite cache init), implement `build_serp_url()` (D3: `pws=0&safe=off`, no `num/tbm/udm/site:`), parser cascade (`div.tF2Cxc` → `div.Ez5pwe` → `div.MjjYud` → h3-anchored fallback with `parse.cascade.exhausted` alert per D4), `_detect_block()` (BROWSER-05), URL canonicalization + dedupe (SEARCH-05), heuristic junk-domain blocklist pre-filter (D9, SEARCH-06), re-rank logic (SEARCH-07), and Pydantic request/response models (SEARCH-01, SEARCH-08). Covers SEARCH-01..08, BROWSER-01..05.
+- [x] 02-01-PLAN.md — Core pipeline — scaffold FastAPI app with `lifespan` (Cloak singleton + recycle loop + sqlite cache init), implement `build_serp_url()` (D3: `pws=0&safe=off`, no `num/tbm/udm/site:`), parser cascade (`div.tF2Cxc` → `div.Ez5pwe` → `div.MjjYud` → h3-anchored fallback with `parse.cascade.exhausted` alert per D4), `_detect_block()` (BROWSER-05), URL canonicalization + dedupe (SEARCH-05), heuristic junk-domain blocklist pre-filter (D9, SEARCH-06), re-rank logic (SEARCH-07), and Pydantic request/response models (SEARCH-01, SEARCH-08). Covers SEARCH-01..08, BROWSER-01..05.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
-| 2. MVP | 0/3 | Planned | - |
+| 2. MVP | 1/3 | In Progress|  |
 | 3. Robustness | 0/2 | Not started | - |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
