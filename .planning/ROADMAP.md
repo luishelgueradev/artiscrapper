@@ -89,7 +89,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — LLM curator + visit pass + freshness + cache — implement `LLMVerdict` Pydantic model with `fallback()` classmethod (LLM-02), Spanish system prompt + 2 few-shot examples (LLM-01), `asyncio.Semaphore(LLM_CONCURRENCY=4)` orchestration (LLM-03), 5s timeout + `llm_fail:*` reason taxonomy (LLM-04), `<0.4` cutoff + `metadata.llm_degraded` surfacing (LLM-05 = D2 foot-gun), degraded-mode fallback to blocklist + price-in-card (LLM-06), router HEAD probe (LLM-07/08); visit pass with `httpx.AsyncClient(http2=True)` + global Semaphore(8) + per-host Semaphore(2) (VISIT-02, D5), realistic Chromium-146 headers + `Sec-Fetch-Site` + `Referer` (VISIT-04, D11), skip-if-you-can (VISIT-01), `classify_response()` for live-vs-dead (VISIT-05), hand-rolled JSON-LD + OG + microdata + AR-regex extractor in selectolax (VISIT-06, D12 — assuming Phase 1 spike confirms hand-roll), no-MELI-host invariant (VISIT-08), failure flags `skip_dead`/`visit_failed` no-retry (VISIT-07); freshness logic per FRESH-01..04; sqlite cache with `aiosqlite` + WAL + gzipped BLOB columns + lazy TTL + hourly prune loop + nightly checkpoint (CACHE-01..05, D7). Covers LLM-01..08, VISIT-01..08, FRESH-01..04, CACHE-01..05.
+- [x] 02-02-PLAN.md — LLM curator + visit pass + freshness + cache — implement `LLMVerdict` Pydantic model with `fallback()` classmethod (LLM-02), Spanish system prompt + 2 few-shot examples (LLM-01), `asyncio.Semaphore(LLM_CONCURRENCY=4)` orchestration (LLM-03), 5s timeout + `llm_fail:*` reason taxonomy (LLM-04), `<0.4` cutoff + `metadata.llm_degraded` surfacing (LLM-05 = D2 foot-gun), degraded-mode fallback to blocklist + price-in-card (LLM-06), router HEAD probe (LLM-07/08); visit pass with `httpx.AsyncClient(http2=True)` + global Semaphore(8) + per-host Semaphore(2) (VISIT-02, D5), realistic Chromium-146 headers + `Sec-Fetch-Site` + `Referer` (VISIT-04, D11), skip-if-you-can (VISIT-01), `classify_response()` for live-vs-dead (VISIT-05), hand-rolled JSON-LD + OG + microdata + AR-regex extractor in selectolax (VISIT-06, D12 — assuming Phase 1 spike confirms hand-roll), no-MELI-host invariant (VISIT-08), failure flags `skip_dead`/`visit_failed` no-retry (VISIT-07); freshness logic per FRESH-01..04; sqlite cache with `aiosqlite` + WAL + gzipped BLOB columns + lazy TTL + hourly prune loop + nightly checkpoint (CACHE-01..05, D7). Covers LLM-01..08, VISIT-01..08, FRESH-01..04, CACHE-01..05.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
-| 2. MVP | 1/3 | In Progress|  |
+| 2. MVP | 2/3 | In Progress|  |
 | 3. Robustness | 0/2 | Not started | - |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
