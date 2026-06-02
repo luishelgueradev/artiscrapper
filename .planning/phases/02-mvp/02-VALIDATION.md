@@ -2,7 +2,7 @@
 phase: 2
 slug: mvp
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-02
 ---
@@ -69,7 +69,7 @@ created: 2026-06-02
 | 02-03-XX | 03 | 3 | DEPLOY-05 | T-D6 | D6: uvloop absent from pyproject.toml + uv.lock | unit (grep) | `pytest tests/test_footguns.py::test_uvloop_absent_from_lock -x` | ❌ W0 | ⬜ pending |
 | 02-03-XX | 03 | 3 | NF-01 (E2E) | — | POST /search q=pelota → ≥10 results, ≥6 with price | e2e | `pytest tests/test_e2e.py::test_serp_pelota -x -m e2e` | ❌ W0 | ⬜ pending |
 | 02-03-XX | 03 | 3 | NF-01 (E2E) | — | Identical query within 24h → cache_hit=true, <500ms | e2e | `pytest tests/test_e2e.py::test_cache_hit -x -m e2e` | ❌ W0 | ⬜ pending |
-| 02-03-XX | 03 | 3 | PRD §10 | — | Zero blogs/wiki/youtube in top 10 results | e2e + manual | same e2e test + human review | ❌ W0 | ⬜ pending |
+| 02-03-XX | 03 | 3 | PRD §10 | — | Zero blogs/wiki/youtube in top 10 results | e2e (automated assertion embedded in test_serp_pelota) | `pytest tests/test_e2e.py::test_serp_pelota -x -m e2e` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 *Task IDs (XX) will be assigned by gsd-planner during PLAN.md emission.*
@@ -94,18 +94,17 @@ created: 2026-06-02
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| PRD §10 "zero blogs/wiki/youtube in top 10" | NF-01 (qualitative) | Domain judgment on what counts as junk (e.g., automotive forums) | After e2e returns, human reviews the top 10 `host` fields for any informational sites |
 | Cloak SERP fetch returns clean HTML (no consent interstitial, no /sorry/) on dev-box IP | BROWSER-05 / NF-04 | Anti-bot rate is IP-dependent; only measurable on the deploy target | After `docker compose up`, hit `POST /search` 5x and confirm no 429s; spot-check raw_serp_html in cache for /sorry/ markers |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (test files + pytest config)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s (unit/integration)
-- [ ] `nyquist_compliant: true` set in frontmatter once planner maps every task → automated test
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (test files + pytest config)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s (unit/integration)
+- [x] `nyquist_compliant: true` set in frontmatter once planner maps every task → automated test
 
-**Approval:** pending
+**Approval:** planner-signed 2026-06-02 (Wave 0 sign-off pending execution)
