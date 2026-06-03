@@ -41,6 +41,21 @@ CREATE TABLE IF NOT EXISTS query_cache (
 
 CREATE INDEX IF NOT EXISTS ix_cache_expires_at ON query_cache(expires_at);
 CREATE INDEX IF NOT EXISTS ix_cache_created_at ON query_cache(created_at);
+
+-- Phase 3 (Plan 03-02) — ChallengeBackoff single-row state table (D-08).
+-- CHECK(id=1) enforces the single-row invariant at the DB layer. The seed
+-- row is inserted via INSERT OR IGNORE so init_schema is idempotent across
+-- container restarts (state survives `docker compose up --force-recreate`).
+CREATE TABLE IF NOT EXISTS challenge_state (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),   -- enforce single row
+    last_block_at   INTEGER,                              -- unix epoch of most recent block
+    retry_count     INTEGER NOT NULL DEFAULT 0,           -- consecutive blocks since last reset
+    next_allowed_at INTEGER NOT NULL DEFAULT 0,           -- unix epoch — gate for next Google fetch
+    updated_at      INTEGER NOT NULL                      -- forensics
+);
+
+INSERT OR IGNORE INTO challenge_state (id, last_block_at, retry_count, next_allowed_at, updated_at)
+    VALUES (1, NULL, 0, 0, strftime('%s', 'now'));
 """
 
 

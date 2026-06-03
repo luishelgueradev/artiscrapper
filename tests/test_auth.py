@@ -25,14 +25,36 @@ import pytest
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp_db.close()
 os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-auth")
-os.environ["CACHE_DB_PATH"] = _tmp_db.name
-os.environ["API_KEYS"] = "test-key-1,test-key-2"
+os.environ.setdefault("CACHE_DB_PATH", _tmp_db.name)
+# Append our test keys to any existing API_KEYS so we don't clobber a
+# sibling test file's keys (Phase 3 cross-test contract — see
+# tests/integration/test_challenge_backoff.py module docstring).
+_au_existing_keys = os.environ.get("API_KEYS", "").strip()
+_au_our_keys = ["test-key-1", "test-key-2"]
+_au_existing_set = {k.strip() for k in _au_existing_keys.split(",") if k.strip()}
+_au_merged = _au_existing_set | set(_au_our_keys)
+os.environ["API_KEYS"] = ",".join(sorted(_au_merged))
 # Keep Sentry off — these tests don't exercise it.
 os.environ.setdefault("SENTRY_DSN", "")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from src.artiscrapper import auth as _auth_module  # noqa: E402
 from src.artiscrapper.main import app  # noqa: E402
+
+# CROSS-TEST IMPORT-ORDER DEFENSE (Phase 3):
+# `src.artiscrapper.auth.API_KEYS` AND `src.artiscrapper.config.settings`
+# are BOTH captured at FIRST import. If a sibling test file (e.g.
+# tests/integration/test_challenge_backoff.py) imported `app` BEFORE
+# this file ran its `os.environ["API_KEYS"]=...` override, both
+# in-memory caches are stale: `settings.API_KEYS` carries the sibling's
+# value, and `auth.API_KEYS` parsed from it.
+#
+# `_auth_module._parse_api_keys()` reads from `settings.API_KEYS` (also
+# cached) — so a naive refresh won't pick up our override. Parse the
+# LIVE `os.environ["API_KEYS"]` directly to rebuild the set.
+_live_keys = os.environ.get("API_KEYS", "")
+_auth_module.API_KEYS = {k.strip() for k in _live_keys.split(",") if k.strip()}
 
 
 def _make_mock_browser() -> MagicMock:
