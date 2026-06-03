@@ -34,6 +34,20 @@ class Settings(BaseSettings):
     LOG_JSON: bool = True
     LOG_LEVEL: str = "INFO"
 
+    # ── Phase 3 — Robustness ──
+    # D-01: comma-separated API keys; empty string means "no auth configured"
+    # (auth.py warns at module load when empty). Rotation requires container restart.
+    API_KEYS: str = ""
+    # D-02: per-key quotas. The slowapi decorators use string literals
+    # ("60/minute" / "10000/day") so these constants exist mainly for the D-19
+    # lifespan log line and for documentation; they are not threaded into the
+    # decorator strings (per Pitfall 6 in 03-RESEARCH.md — settings/contract
+    # shadowing risk).
+    API_RATE_PER_MINUTE: int = 60
+    API_RATE_PER_DAY: int = 10000
+    # D-14: empty → Sentry disabled (no init). Set in production compose only.
+    SENTRY_DSN: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

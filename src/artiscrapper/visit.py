@@ -18,7 +18,7 @@ import httpx
 import structlog
 from selectolax.parser import HTMLParser
 
-from .metrics import metrics
+from .metrics import inc_visit_failed, metrics, visit_elapsed  # noqa: F401  (metrics kept for backwards-compat readers)
 
 log = structlog.get_logger()
 
@@ -341,37 +341,46 @@ async def visit_candidates(
         host = urlparse(url).netloc
 
         async with global_sem, host_sems[host]:
+            # D-12: bracket the FETCH stage (httpx round-trip). CRITICAL —
+            # context-manager form ONLY (03-RESEARCH.md §A5 / Pitfall 1):
+            # decorator form is unsafe on async def.
             try:
-                async with httpx.AsyncClient(
-                    http2=True,
-                    headers=DEFAULT_HEADERS,
-                    follow_redirects=True,
-                    timeout=httpx.Timeout(
-                        connect=3.0, read=float(visit_timeout_s), write=3.0, pool=2.0
-                    ),
-                    limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
-                ) as client:
-                    resp = await client.get(url)
+                with visit_elapsed.labels(stage="fetch").time():
+                    async with httpx.AsyncClient(
+                        http2=True,
+                        headers=DEFAULT_HEADERS,
+                        follow_redirects=True,
+                        timeout=httpx.Timeout(
+                            connect=3.0, read=float(visit_timeout_s), write=3.0, pool=2.0
+                        ),
+                        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+                    ) as client:
+                        resp = await client.get(url)
             except (httpx.TimeoutException, httpx.NetworkError, httpx.ConnectError):
                 candidate["visit_failed"] = True
-                metrics.visit_failed_total[host] += 1  # OBS-06
+                # D-11 bridge — host normalized to TLD+1 inside inc_visit_failed.
+                inc_visit_failed(host)  # OBS-06
                 return candidate
             except Exception:
                 candidate["visit_failed"] = True
-                metrics.visit_failed_total[host] += 1  # OBS-06
+                inc_visit_failed(host)  # OBS-06
                 return candidate
 
-            # VISIT-07: no retry on failure
-            outcome = classify_response(resp)
+            # VISIT-07: no retry on failure.
+            # D-12: bracket the CLASSIFY stage (response → live/dead/failed).
+            with visit_elapsed.labels(stage="classify").time():
+                outcome = classify_response(resp)
             if outcome == "dead":
                 candidate["skip_dead"] = True
                 return candidate
             if outcome == "failed":
                 candidate["visit_failed"] = True
-                metrics.visit_failed_total[host] += 1  # OBS-06
+                inc_visit_failed(host)  # OBS-06
                 return candidate
 
-            extracted = extract_product(resp.text)
+            # D-12: bracket the EXTRACT stage (selectolax parse + cascade).
+            with visit_elapsed.labels(stage="extract").time():
+                extracted = extract_product(resp.text)
             if extracted:
                 candidate.update(extracted)
             return candidate

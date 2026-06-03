@@ -16,6 +16,17 @@ services:
       - LLM_CONCURRENCY=4
       - LOG_JSON=true
       - LOG_LEVEL=INFO
+      # ── Phase 3 — Robustness ──
+      # D-01: comma-separated API keys; empty default ⇒ all requests get 401.
+      # Set via .env or shell export before `docker compose up`.
+      - API_KEYS=${API_KEYS:-}
+      # D-02: per-key quotas (informational — the slowapi decorators in
+      # main.py use string literals "60/minute" / "10000/day").
+      - API_RATE_PER_MINUTE=${API_RATE_PER_MINUTE:-60}
+      - API_RATE_PER_DAY=${API_RATE_PER_DAY:-10000}
+      # D-14: empty default ⇒ Sentry SDK init is skipped. Set in production
+      # only; never set in dev/test (PRD: off by default).
+      - SENTRY_DSN=${SENTRY_DSN:-}
     extra_hosts:
       # Make host.docker.internal resolve on Linux Docker (without Docker Desktop).
       # No-op on Docker Desktop where it's already wired by default.
