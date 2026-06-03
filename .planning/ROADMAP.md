@@ -117,7 +117,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Metrics + Sentry + per-API-key rate-limit (OBS-07; covers D-01..D-04, D-10..D-17, partial D-18/D-19 log-line gates). Wires prometheus-client `/metrics` via `make_asgi_app()` mount, sentry-sdk auto-detect FastAPI with traces_sample_rate=0.1 + tags.correlation_id, slowapi stacked 60/min + 10000/day on `/search` keyed by `X-API-Key` (401 via Depends; 429 via slowapi). Closes ROADMAP success criteria 1, 2, 3.
+- [x] 03-01-PLAN.md — Metrics + Sentry + per-API-key rate-limit (OBS-07; covers D-01..D-04, D-10..D-17, partial D-18/D-19 log-line gates). Wires prometheus-client `/metrics` via `make_asgi_app()` mount, sentry-sdk auto-detect FastAPI with traces_sample_rate=0.1 + tags.correlation_id, slowapi stacked 60/min + 10000/day on `/search` keyed by `X-API-Key` (401 via Depends; 429 via slowapi). Closes ROADMAP success criteria 1, 2, 3.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
 | 2. MVP | 3/3 | Complete   | 2026-06-02 |
-| 3. Robustness | 0/2 | Not started | - |
+| 3. Robustness | 1/2 | In Progress|  |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
 
