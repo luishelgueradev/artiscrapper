@@ -115,8 +115,13 @@ Plans:
 
 Plans:
 
-- [ ] 03-01: Metrics + Sentry + per-API-key rate-limit — wire `prometheus-client` into the existing inline counters from Phase 2, add histograms with `Histogram.time()` decorators on the search/llm/visit hot paths, expose `/metrics` endpoint behind same-process middleware (OBS-07); add `sentry-sdk` with `SENTRY_DSN` env-var gating; integrate `slowapi` with `X-API-Key` extractor for per-consumer rate-limit on `/search` (does not replace the BROWSER-04 1/min Google rate-limit). CI: `curl /metrics` smoke test.
-- [ ] 03-02: Challenge detection + backoff + degraded-mode + integration tests — extend `_detect_block()` (BROWSER-05) with a `ChallengeBackoff` state machine that exponentially delays next-fetch on consecutive blocks, persists last-block-at in sqlite for restart survival; harden the LLM-down degraded path with a synthetic-load test that kills the router and asserts `/search` keeps serving; build `tests/integration/` suite that replays the Phase 1 fixture set through the live parser cascade + JSON-LD extractor + visit-pass classifier and asserts the D4 cascade alert fires on a deliberately-broken fixture and >85% catalog price extraction (validates D12 hand-roll decision in production).
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Metrics + Sentry + per-API-key rate-limit (OBS-07; covers D-01..D-04, D-10..D-17, partial D-18/D-19 log-line gates). Wires prometheus-client `/metrics` via `make_asgi_app()` mount, sentry-sdk auto-detect FastAPI with traces_sample_rate=0.1 + tags.correlation_id, slowapi stacked 60/min + 10000/day on `/search` keyed by `X-API-Key` (401 via Depends; 429 via slowapi). Closes ROADMAP success criteria 1, 2, 3.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — ChallengeBackoff + degraded mode + integration suite (covers D-05..D-09, D-18/D-19/D-20). Adds `challenge_backoff.py` module-singleton state machine (mirrors `llm.py::resolve_model` pattern) with `min(60 * 2^retries, 3600)` curve and sqlite `challenge_state` single-row persistence; `/search` returns 503 + Retry-After in backoff. Ships `tests/integration/` fixture-replay suite validating LLM-down ≥5 useful results (LLM-06 hardening) and ≥85% catalog price extraction (D12 production gate). Closes ROADMAP success criteria 4, 5, 6.
 
 **Duration**: 1 week (matches PRD §7 Fase 2 estimate)
 
