@@ -241,12 +241,23 @@ limiter = Limiter(key_func=get_api_key, headers_enabled=True)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# D-10: /metrics is mounted as an ASGI sub-app so it bypasses FastAPI
-# middleware (no slowapi, no CorrelationIdMiddleware, no auth dependency).
-# This is by design — see test_metrics_endpoint_unprotected_by_design.
+# D-10: /metrics is mounted as an ASGI sub-app so it bypasses the
+# per-route mechanisms — slowapi limits do NOT apply, and no
+# verify_api_key Depends runs. WR-06 correction: this mount does NOT
+# bypass app.add_middleware(...) below. Starlette installs middleware
+# at the ASGI level so CorrelationIdMiddleware wraps EVERY request,
+# including those that land on this sub-app. The invariant we rely on
+# is therefore not "middleware doesn't run" but "the middleware in use
+# is harmless on a /metrics request" — i.e. CorrelationIdMiddleware
+# only adds an X-Request-ID header and never raises on a malformed
+# request. If that ever changes, /metrics goes down with the rest of
+# the app, breaking the scrape-must-survive-everything expectation —
+# at which point the migration path is prometheus_client.start_http_server
+# on a separate admin port. See test_metrics_endpoint_unprotected_by_design.
 app.mount("/metrics", make_asgi_app())
 
 # CorrelationIdMiddleware must be outermost (added last = executed first in request chain)
+# WR-06: ALSO wraps the /metrics ASGI sub-app above — middleware is ASGI-level.
 app.add_middleware(CorrelationIdMiddleware)
 
 

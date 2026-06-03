@@ -9,8 +9,12 @@ Phase 3 extensions:
   - test_sentry_does_not_pull_uvloop: re-asserts D-6 against sentry-sdk's
     transitive dep tree (03-RESEARCH.md §G3).
   - test_metrics_endpoint_unprotected_by_design: pins D-10 — /metrics must
-    be mounted via prometheus_client.make_asgi_app() (an ASGI sub-app that
-    bypasses FastAPI middleware + slowapi), NOT a regular FastAPI route.
+    be mounted via prometheus_client.make_asgi_app() so per-route mechanisms
+    (slowapi limits, verify_api_key Depends) do NOT apply. WR-06 correction:
+    this mount does NOT bypass app.add_middleware — Starlette installs
+    middleware at the ASGI level so CorrelationIdMiddleware wraps /metrics
+    too. The invariant tracked here is that /metrics has no slowapi /
+    verify_api_key wrapping, NOT that "all middleware is bypassed".
 """
 
 import subprocess
@@ -126,9 +130,10 @@ def test_sentry_does_not_pull_uvloop():
 def test_metrics_endpoint_unprotected_by_design():
     """
     D-10: /metrics must be mounted via prometheus_client.make_asgi_app() so
-    it bypasses FastAPI middleware (CorrelationIdMiddleware + slowapi). If a
-    future refactor moves /metrics to a regular FastAPI route, the slowapi
-    + auth dependencies would silently wrap it — breaking the D-10 contract.
+    per-route mechanisms (slowapi limits, verify_api_key Depends) do NOT
+    apply. WR-06 correction: app.add_middleware DOES wrap the ASGI sub-app
+    (Starlette installs middleware at the ASGI level), so the invariant we
+    assert here is "no per-route wrapping", not "no middleware at all".
     """
     result = subprocess.run(
         ["grep", "-n", "/metrics", "src/artiscrapper/main.py"],
@@ -137,6 +142,7 @@ def test_metrics_endpoint_unprotected_by_design():
     )
     assert "make_asgi_app()" in result.stdout, (
         "D-10: /metrics must be mounted via prometheus_client.make_asgi_app() "
-        "(ASGI sub-app), NOT a FastAPI route — otherwise CorrelationIdMiddleware "
-        "+ slowapi will wrap it. main.py grep output:\n" + result.stdout
+        "(ASGI sub-app), NOT a FastAPI route — otherwise slowapi + "
+        "verify_api_key would silently wrap it. main.py grep output:\n"
+        + result.stdout
     )
