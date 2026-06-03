@@ -122,13 +122,28 @@ def _init_sentry() -> None:
     dsn = settings.SENTRY_DSN
     if not dsn:
         return  # off in dev/test — D-14
-    sentry_sdk.init(
-        dsn=dsn,
-        traces_sample_rate=0.1,        # D-15: 10% of transactions
-        profiles_sample_rate=0.0,      # D-15: profiling off
-        send_default_pii=False,        # OBS-05 alignment
-        # FastAPI + Httpx integrations auto-detected (sentry-sdk 2.x)
-    )
+    # CR-02: NEVER let observability init crash app boot. A malformed DSN
+    # (typo in compose, mid-rotation truncation, wrong scheme) makes
+    # sentry_sdk.init raise InvalidDsn at module-import time, which
+    # propagates up through `from .logging_setup import ...` in main.py
+    # BEFORE configure_logging() runs — producing an opaque non-zero exit
+    # in container logs. The module docstring's own invariant
+    # ("observability code must not be load-bearing") demands we swallow
+    # init failures. OBS-05: do NOT log the DSN value on failure. The
+    # lifespan event `sentry_init_skipped` already declares the end state
+    # via sentry_sdk.get_client().is_active() in main.py.
+    try:
+        sentry_sdk.init(
+            dsn=dsn,
+            traces_sample_rate=0.1,        # D-15: 10% of transactions
+            profiles_sample_rate=0.0,      # D-15: profiling off
+            send_default_pii=False,        # OBS-05 alignment
+            # FastAPI + Httpx integrations auto-detected (sentry-sdk 2.x)
+        )
+    except Exception:
+        # Boot must continue. lifespan's sentry_init_done/skipped log line
+        # already reflects the real end state via is_active().
+        pass
 
 
 # Run at module import time so `from .logging_setup import configure_logging`
