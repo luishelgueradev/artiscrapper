@@ -432,17 +432,27 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
     # ── Build Candidate list ──
     results = []
     for c in ranked:
+        # Price priority: parser's price → SERP card price_in_card (now extracted
+        # via regex in search.py, was always None before) → LLM verdict price_hint.
+        # The card-level price is more reliable than the LLM hint (LLM can hallucinate;
+        # the SERP card showed it directly).
+        price_val = c.get("price") or c.get("price_in_card") or c.get("price_hint")
         results.append(
             Candidate(
                 url=c["url"],
                 title=c.get("title"),
                 snippet=c.get("snippet"),
-                price=c.get("price") or c.get("price_hint"),
+                price=price_val,
                 currency=c.get("currency"),
-                has_price=bool(c.get("price") or c.get("price_in_card")),
+                has_price=bool(price_val),
                 fresh=c.get("fresh"),
                 llm_confidence=c.get("llm_confidence", 0.0),
                 freshness_signal=c.get("freshness_signal", "unknown"),
+                installments=c.get("installments"),
+                stock=c.get("stock"),
+                free_shipping=bool(c.get("free_shipping")),
+                rating=c.get("rating"),
+                store_hint=c.get("store_hint"),
                 flags=c.get("flags", []),
             )
         )

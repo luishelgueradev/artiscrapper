@@ -98,6 +98,82 @@ def test_parse_serp_fixtures():
         )
 
 
+def test_carousel_extracts_prices_from_fixtures():
+    """
+    SEARCH-04 regression guard — the carousel extractor was originally a stub that
+    required <a href> inside the card (Google uses JS click handlers, so it never
+    matched). All 20+ carousel items per fixture were silently dropped, and the
+    price selectors (.price/.precio) didn't match Google's obfuscated classes either.
+
+    After the regex-first refactor, every fixture with a Google Shopping carousel
+    should yield at least 8 carousel candidates with prices, and the per-fixture
+    'with-price' count should be substantially above the pre-fix baseline.
+    """
+    expectations = {
+        # name → (min_carousel_items, min_with_price)
+        "01-pelota_playera_quico.html": (15, 18),
+        "02-filtro_aceite_ford_focus.html": (25, 25),
+        "03-amortiguador_trasero_peugeot_208.html": (8, 12),
+        "04-buja_ngk_bosch.html": (15, 15),
+        "05-correa_distribucion_fiat_cronos.html": (8, 10),
+        "06-disco_freno_renault_sandero.html": (8, 12),
+        "07-rotula_direccion_vw_gol.html": (25, 25),
+        "08-kit_embrague_chevrolet_onix.html": (25, 25),
+        "09-termostato_corsa_classic.html": (12, 15),
+        # 10-balatas: Phase 1 confirmed this fixture has NO carousel (empty carousel
+        # column in survey); only organic results — no minimum carousel guarantee.
+    }
+    for name, (min_carousel, min_with_price) in expectations.items():
+        html = (FIXTURES_DIR / name).read_text(encoding="utf-8", errors="replace")
+        cands = parse_serp(html)
+        carousel_count = sum(1 for c in cands if "carousel" in c.get("flags", []))
+        with_price = sum(1 for c in cands if c.get("price_in_card"))
+        assert carousel_count >= min_carousel, (
+            f"{name}: carousel candidates regressed: got {carousel_count}, "
+            f"expected ≥{min_carousel}. Likely Google rotated the Ez5pwe selector."
+        )
+        assert with_price >= min_with_price, (
+            f"{name}: candidates-with-price regressed: got {with_price}, "
+            f"expected ≥{min_with_price}. Check _extract_commercial_signals regex."
+        )
+
+
+def test_carousel_url_is_synthetic_when_no_direct_link():
+    """Carousel items have no <a href>; URL is a Google search fallback flagged
+    with 'synthetic_url'. Consumers can show it as 'search this product' rather
+    than expecting a direct PDP link."""
+    html = (FIXTURES_DIR / "01-pelota_playera_quico.html").read_text(encoding="utf-8")
+    cands = parse_serp(html)
+    carousel_items = [c for c in cands if "carousel" in c.get("flags", [])]
+    assert len(carousel_items) > 0, "carousel items missing from pelota_quico fixture"
+    for c in carousel_items:
+        assert "synthetic_url" in c.get("flags", []), (
+            f"carousel item missing synthetic_url flag: {c['url']!r}"
+        )
+        assert c["url"].startswith("https://www.google.com/search?q="), (
+            f"carousel synthetic URL should be a Google search fallback, got {c['url']!r}"
+        )
+        assert c.get("price_in_card"), (
+            "carousel candidate should always have price_in_card (filter in extractor)"
+        )
+
+
+def test_commercial_signals_extracted_from_node_text():
+    """Regex-based signal extraction: installments, stock, free shipping, store_hint."""
+    html = (FIXTURES_DIR / "01-pelota_playera_quico.html").read_text(encoding="utf-8")
+    cands = parse_serp(html)
+    # At least some candidates should carry each signal type
+    assert sum(1 for c in cands if c.get("installments")) >= 5, (
+        "installments regex should capture at least 5 carousel items"
+    )
+    assert sum(1 for c in cands if c.get("store_hint")) >= 10, (
+        "store_hint regex should capture trailing domain from carousel + organic"
+    )
+    assert sum(1 for c in cands if c.get("stock")) >= 1, (
+        "stock regex should catch 'agotado' / 'in stock' indicators when present"
+    )
+
+
 def test_build_serp_url():
     """SEARCH-03/D3: build_serp_url includes pws=0&safe=off, no site: operator."""
     url_a = build_serp_url("filtro aceite ford focus")

@@ -90,22 +90,76 @@ OUTPUT:
 USER_TEMPLATE = "INPUT:\n{candidate_json}\nOUTPUT:"
 
 
+# Process-lifetime cache for the resolved model alias. Populated on first
+# resolve_model() call; survives until process exit. See LLM_USE_RECOMMENDATIONS.
+_RESOLVED_MODEL: str | None = None
+_RESOLVE_LOCK = asyncio.Lock()
+
+
+async def resolve_model(
+    client: httpx.AsyncClient,
+    router_url: str,
+    bearer_token: str,
+) -> str:
+    """
+    Resolve the canonical model alias for chat+json_strict via the router's
+    /v1/models recommendations map. Cached for the process lifetime. Falls back
+    to settings.LLM_MODEL on any failure (404, timeout, missing key, etc.).
+    """
+    global _RESOLVED_MODEL
+    if _RESOLVED_MODEL is not None:
+        return _RESOLVED_MODEL
+    if not settings.LLM_USE_RECOMMENDATIONS:
+        _RESOLVED_MODEL = settings.LLM_MODEL
+        return _RESOLVED_MODEL
+    async with _RESOLVE_LOCK:
+        if _RESOLVED_MODEL is not None:
+            return _RESOLVED_MODEL
+        try:
+            r = await client.get(
+                f"{router_url}/v1/models",
+                headers={"Authorization": f"Bearer {bearer_token}"},
+                timeout=5.0,
+            )
+            r.raise_for_status()
+            recs = r.json().get("recommendations") or {}
+            resolved = recs.get(settings.LLM_RECOMMENDATION_KEY) or settings.LLM_MODEL
+            log.info(
+                "llm_model_resolved",
+                model=resolved,
+                key=settings.LLM_RECOMMENDATION_KEY,
+                source="recommendations",
+            )
+            _RESOLVED_MODEL = resolved
+        except Exception as exc:
+            log.warning(
+                "llm_model_resolve_failed",
+                error=type(exc).__name__,
+                fallback=settings.LLM_MODEL,
+            )
+            _RESOLVED_MODEL = settings.LLM_MODEL
+        return _RESOLVED_MODEL
+
+
 async def classify_candidate(
     client: httpx.AsyncClient,
     candidate: dict,
     sem: asyncio.Semaphore,
     router_url: str,
     bearer_token: str,
+    model: str | None = None,
 ) -> "LLMVerdict":
     """
     Classify a single SERP candidate via the local LLM router.
     LLM-01: per-candidate call to local-llms-router.
     LLM-07: temperature=0.0, max_tokens=128, json mode.
     LLM-08/OBS-05: NEVER log prompt, response content, bearer_token, or candidate fields.
+    `model`: alias to use; if None, falls back to settings.LLM_MODEL (legacy path —
+    curate_candidates passes the resolved alias explicitly).
     """
     async with sem:
         payload = {
-            "model": settings.LLM_MODEL,  # configurable via env (LLM_MODEL); see config.py
+            "model": model or settings.LLM_MODEL,
             "messages": [
                 {
                     "role": "system",
@@ -142,7 +196,8 @@ async def classify_candidate(
             metrics.llm_fallback_total["timeout"] += 1  # OBS-06
             return LLMVerdict.fallback("timeout")
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 503:
+            code = e.response.status_code
+            if code == 503:
                 # LLM queue full — single retry after 1s (LLM-04)
                 await asyncio.sleep(1.0)
                 try:
@@ -158,8 +213,26 @@ async def classify_candidate(
                 except Exception:
                     metrics.llm_fallback_total["overload"] += 1  # OBS-06
                     return LLMVerdict.fallback("overload")
-            metrics.llm_fallback_total[f"http_{e.response.status_code}"] += 1  # OBS-06
-            return LLMVerdict.fallback(f"http_{e.response.status_code}")
+            if code in (502, 504):
+                # Upstream cold-load: router adapter timed out before Ollama finished
+                # loading the model into VRAM (~50s on 16GB GPU). Single retry after
+                # a long backoff so the second hit lands on a hot model.
+                await asyncio.sleep(settings.LLM_COLD_LOAD_RETRY_AFTER_S)
+                try:
+                    resp2 = await client.post(
+                        f"{router_url}/v1/chat/completions",
+                        json=payload,
+                        headers={"Authorization": f"Bearer {bearer_token}"},
+                        timeout=5.0,
+                    )
+                    resp2.raise_for_status()
+                    raw2 = resp2.json()["choices"][0]["message"]["content"]
+                    return LLMVerdict.model_validate_json(raw2)
+                except Exception:
+                    metrics.llm_fallback_total[f"cold_load_{code}"] += 1  # OBS-06
+                    return LLMVerdict.fallback(f"cold_load_{code}")
+            metrics.llm_fallback_total[f"http_{code}"] += 1  # OBS-06
+            return LLMVerdict.fallback(f"http_{code}")
         except (json.JSONDecodeError, ValidationError, KeyError):
             metrics.llm_fallback_total["malformed"] += 1  # OBS-06
             return LLMVerdict.fallback("malformed")
@@ -219,8 +292,14 @@ async def curate_candidates(
     dropped_count = 0
 
     async with httpx.AsyncClient(http2=True) as client:
+        # Resolve canonical alias once per batch — cached for the process lifetime
+        # after first call. Falls back to settings.LLM_MODEL on any error.
+        model = await resolve_model(client, router_url, bearer_token)
         verdicts = await asyncio.gather(
-            *[classify_candidate(client, c, sem, router_url, bearer_token) for c in candidates]
+            *[
+                classify_candidate(client, c, sem, router_url, bearer_token, model)
+                for c in candidates
+            ]
         )
 
     for candidate, verdict in zip(candidates, verdicts):

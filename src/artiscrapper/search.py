@@ -7,7 +7,8 @@ SEARCH-06: junk-domain blocklist (D9). SEARCH-07: re-rank.
 OBS-05: NEVER log title, snippet, url, or reason.
 """
 
-from urllib.parse import parse_qs, quote, urlencode, urlparse, urlunparse
+import re
+from urllib.parse import parse_qs, quote, quote_plus, urlencode, urlparse, urlunparse
 
 import structlog
 from selectolax.parser import HTMLParser
@@ -51,9 +52,99 @@ CAROUSEL_SELECTORS = [
     "g-scrolling-carousel div[role='listitem']",
 ]
 
+# ──────────────────────────────────────────
+# Regex-based commercial-data extraction
+# ──────────────────────────────────────────
+# Google rotates obfuscated CSS classes (LI0TWe, lmQWe, zxVpA, etc.) ~trimestrally,
+# so we extract from the node's text content via regex — robust to class churn.
+
+# AR price formats: $5.000,00 / $ 5.000,00 / $18.032,30 / ARS 5000 / U$S 5000.
+# NBSP (\xa0) shows up between '$' and digits in Google's HTML — strip during normalize.
+_PRICE_RE = re.compile(
+    r"(?:\$|ARS|U\$S)\s?[\d](?:[\d.,]*\d)?",
+    re.IGNORECASE,
+)
+# Installment pattern: "$4.056,97/mes x 6" or "x 6 cuotas de $4.056,97 sin interés".
+# The `x N` suffix is captured optionally, with whitespace mandatory after the digit
+# so we don't bleed into "x 6Mercadolibre" (no separator) trailing text.
+_INSTALLMENT_RE = re.compile(
+    r"\$\s?[\d.,]+\s?/\s?mes(?:\s+x\s?\d+\b)?"
+    r"|x\s?\d+\s+cuotas?(?:\s+de\s+\$\s?[\d.,]+)?(?:\s+sin\s+inter[eé]s)?",
+    re.IGNORECASE,
+)
+# Stock signals (positive/negative)
+_STOCK_AGOTADO_RE = re.compile(r"\b(?:agotado|sin\s+stock)\b", re.IGNORECASE)
+_STOCK_OK_RE = re.compile(r"\b(?:stock\s+disponible|en\s+stock|disponible)\b", re.IGNORECASE)
+_SHIPPING_FREE_RE = re.compile(r"env[íi]o\s+gratis|llega\s+gratis|free\s+shipping", re.IGNORECASE)
+# Rating: "4.5 ★" / "4,5 estrellas" / "(1.234)" reviews count
+_RATING_RE = re.compile(r"\b\d[.,]\d(?:\s?★|\s+estrellas?|\s+stars?)?", re.IGNORECASE)
+# Store hint: the domain-ish token Google appends at the end of a card (typically
+# "Mercadolibre.com.ar", "Falabella.com", "Lspalermo.com.ar"). Allow but don't require
+# trailing whitespace — sometimes more text follows. Reject pure-emoji or noisy matches
+# by requiring the domain to start with a letter and contain ".com".
+# Note: NO leading \b — carousel text often concatenates digits and store ("x 6Mercadolibre…"),
+# and \b between two word chars never matches. The leading letter character class is enough
+# to anchor the start of a real store name.
+_STORE_HINT_RE = re.compile(
+    r"([A-Za-zÁÉÍÓÚÑñ][A-Za-z0-9ÁÉÍÓÚáéíóúÑñ\-]{2,30}\.com(?:\.[a-z]{2,3})?)(?:\b|$)"
+)
+
+
+def _normalize_price_text(s: str) -> str:
+    """Strip NBSP and excess whitespace so '$\xa05.000,00' becomes '$5.000,00'."""
+    return s.replace("\xa0", "").replace(" ", "").strip()
+
+
+def _extract_commercial_signals(text: str) -> dict:
+    """
+    Pull price, installment, stock, shipping, rating, store from the node's text content.
+    Returns a dict with only the keys that matched (sparse — caller merges into candidate).
+    """
+    if not text:
+        return {}
+    out: dict = {}
+    # Price: take the FIRST monetary token (cards typically show the actual price first,
+    # then installment plan). Skip pure-decimal floats < 100 (usually rating numbers).
+    for m in _PRICE_RE.finditer(text):
+        raw = m.group(0)
+        norm = _normalize_price_text(raw)
+        # Filter rating numbers like "$3.5" that aren't real prices
+        digits = re.sub(r"[^\d]", "", norm)
+        if len(digits) >= 3:  # at least 3 digits — real prices in AR are $100+
+            out["price_in_card"] = norm
+            break
+    # Installments
+    inst = _INSTALLMENT_RE.search(text)
+    if inst:
+        out["installments"] = _normalize_price_text(inst.group(0))
+    # Stock: prefer the more specific signal
+    if _STOCK_AGOTADO_RE.search(text):
+        out["stock"] = "out_of_stock"
+    elif _STOCK_OK_RE.search(text):
+        out["stock"] = "in_stock"
+    # Shipping
+    if _SHIPPING_FREE_RE.search(text):
+        out["free_shipping"] = True
+    # Rating (only capture a clean N.N pattern, not random decimals)
+    rm = _RATING_RE.search(text)
+    if rm:
+        rating_str = rm.group(0).strip()
+        # Only keep if it's followed by a star/word marker — pure decimals are noisy
+        if "★" in rating_str or "estrella" in rating_str.lower() or "star" in rating_str.lower():
+            out["rating"] = rating_str
+    # Store: take the LAST domain-shaped token in the text (cards end with the store).
+    matches = list(_STORE_HINT_RE.finditer(text.replace("\xa0", " ")))
+    if matches:
+        out["store_hint"] = matches[-1].group(1).strip()
+    return out
+
 
 def _extract_organic(node) -> dict | None:
-    """Extract a candidate dict from an organic SERP result node."""
+    """
+    Extract a candidate dict from an organic SERP result node.
+    Pulls URL/title/snippet via known selectors, then mines commercial signals
+    (price, installments, stock, shipping, rating, store) from the node's full text via regex.
+    """
     # Find the link
     link = node.css_first("a[href]")
     if link is None:
@@ -70,49 +161,85 @@ def _extract_organic(node) -> dict | None:
     snippet_el = node.css_first("div.VwiC3b") or node.css_first("div[data-snc]")
     snippet = snippet_el.text(strip=True) if snippet_el else None
 
-    # Price hint in card (carousel cards sometimes have price)
-    price_in_card = None
-    for price_sel in (".price", ".precio", "[aria-label*='precio']", "[aria-label*='price']"):
-        price_el = node.css_first(price_sel)
-        if price_el:
-            price_in_card = price_el.text(strip=True)
-            break
+    # Commercial signals via regex on the entire node text. Robust to Google's
+    # obfuscated class rotation; covers Shopping-augmented organic results that
+    # carry price/stock/installment without matching the (often-renamed) selectors.
+    signals = _extract_commercial_signals(node.text(strip=True))
 
-    return {
+    candidate: dict = {
         "url": href,
         "title": title,
         "snippet": snippet,
-        "price_in_card": price_in_card,
-        "has_price": bool(price_in_card),
+        "price_in_card": signals.get("price_in_card"),
+        "has_price": bool(signals.get("price_in_card")),
         "flags": [],
     }
+    # Merge optional enrichment without clobbering core fields
+    for key in ("installments", "stock", "free_shipping", "rating", "store_hint"):
+        if key in signals:
+            candidate[key] = signals[key]
+    return candidate
+
+
+def _synthesize_carousel_url(title: str | None, store_hint: str | None) -> str:
+    """
+    Carousel items don't expose a direct <a href> — Google constructs the click-through
+    URL via JS using data-iid/data-pid encoded in inline <script>. Without executing JS
+    we can't recover the exact PDP URL, so we generate a Google-search URL that the
+    consumer can open to land on the actual listing.
+    """
+    parts = [title or "producto"]
+    if store_hint:
+        parts.append(f"site:{store_hint.lower()}")
+    return "https://www.google.com/search?q=" + quote_plus(" ".join(parts))
 
 
 def _extract_carousel(node) -> dict | None:
-    """Extract a candidate dict from a carousel item node."""
-    link = node.css_first("a[href]")
-    if link is None:
+    """
+    Extract a candidate dict from a carousel item node.
+    Carousel items have no direct <a href> (Google uses JS click handlers — see
+    _synthesize_carousel_url docstring). We extract title + commercial signals from
+    the text and synthesize a search-style URL.
+    """
+    text = node.text(strip=True)
+    if not text:
         return None
-    href = link.attributes.get("href", "")
-    if not href or not href.startswith("http"):
+
+    signals = _extract_commercial_signals(text)
+    if "price_in_card" not in signals:
+        # No price in the card → not a useful product card; skip
         return None
 
-    title_el = node.css_first("div.title") or node.css_first("span") or node.css_first("h3")
-    title = title_el.text(strip=True) if title_el else None
+    # Title: substring before the first monetary token (carousels lay out
+    # "Title $price installments Store"). Fall back to the whole text if no
+    # price match position is recoverable.
+    title_text = text
+    price_match = _PRICE_RE.search(text)
+    if price_match:
+        title_text = text[: price_match.start()]
+    # Normalize NBSP + collapse whitespace, then strip card-edge punctuation
+    title_text = re.sub(r"\s+", " ", title_text.replace("\xa0", " ")).strip(" ·-—|")
+    # Strip trailing store hint if it bled into the title
+    store = signals.get("store_hint")
+    if store and title_text.lower().endswith(store.lower()):
+        title_text = title_text[: -len(store)].rstrip(" ·-—|")
+    # Hard cap on title length (some carousels have long product descriptions)
+    title_text = title_text[:250] or None
 
-    price_el = (
-        node.css_first("span.price") or node.css_first("div.price") or node.css_first(".precio")
-    )
-    price_in_card = price_el.text(strip=True) if price_el else None
+    href = _synthesize_carousel_url(title_text, store)
 
-    return {
+    candidate: dict = {
         "url": href,
-        "title": title,
+        "title": title_text,
         "snippet": None,
-        "price_in_card": price_in_card,
-        "has_price": bool(price_in_card),
-        "flags": ["carousel"],
+        "price_in_card": signals["price_in_card"],
+        "has_price": True,
+        "flags": ["carousel", "synthetic_url"],
     }
+    for key in ("installments", "stock", "free_shipping", "rating", "store_hint"):
+        if key in signals:
+            candidate[key] = signals[key]
+    return candidate
 
 
 def _extract_by_h3(tree: HTMLParser) -> list[dict]:

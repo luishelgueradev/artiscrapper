@@ -18,12 +18,22 @@ class Candidate(BaseModel):
     url: str
     title: str | None = None
     snippet: str | None = None
-    price: str | None = None
+    # Upstream producers send mixed types: parser SERP cards give "$5.000" strings,
+    # visit.py extract_jsonld_product / LLMVerdict.price_hint give floats. Accept
+    # both; downstream consumers can normalize or display either form.
+    price: str | float | None = None
     currency: str | None = None
     has_price: bool = False
     fresh: bool | None = None
     llm_confidence: float = 0.0
     freshness_signal: str = "unknown"
+    # Commercial signals scraped directly from the SERP card (carousel + organic).
+    # All optional — present only when the source HTML exposed them.
+    installments: str | None = None  # "$4.056,97/mes x 6"
+    stock: str | None = None  # "in_stock" | "out_of_stock"
+    free_shipping: bool = False
+    rating: str | None = None  # "4.5★" or similar
+    store_hint: str | None = None  # "mercadolibre.com.ar", "lspalermo.com.ar"
     flags: list[str] = Field(default_factory=list)
 
 

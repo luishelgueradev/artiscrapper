@@ -17,10 +17,19 @@ class Settings(BaseSettings):
     LLM_ROUTER_BEARER_TOKEN: (
         str  # no default — pydantic raises ValidationError at startup if absent
     )
-    # Default model name targets the current local-llms-router deploy. Phase 1
-    # SPIKE used "chat-local"; the router has since migrated to explicit ollama
-    # tags (no alias). Override via env when targeting a different backend.
-    LLM_MODEL: str = "llama3.2:3b-instruct-q4_K_M"
+    # Fallback model alias — used only if recommendations lookup is disabled or
+    # fails. Set to the local-llms canonical alias for chat+json_strict, which
+    # routes to qwen2.5:7b-instruct-q4_K_M as of 2026-06-03.
+    LLM_MODEL: str = "chat-local"
+    # When True (default), boot reads /v1/models recommendations[LLM_RECOMMENDATION_KEY]
+    # and pins it for the process lifetime. Falls back to LLM_MODEL on any error.
+    # Set to False to bypass the lookup (e.g. in tests, or to force a specific alias).
+    LLM_USE_RECOMMENDATIONS: bool = True
+    LLM_RECOMMENDATION_KEY: str = "chat-json-strict-default"
+    # Backoff for single retry on 502/504 (upstream cold-load / adapter timeout).
+    # Local-llms-router cancels at ~45s; qwen2.5:7b cold-load is ~50s on 16GB GPU.
+    # KEEP_ALIVE=-1 on the router keeps it hot, so this almost never fires.
+    LLM_COLD_LOAD_RETRY_AFTER_S: float = 30.0
     LLM_CONCURRENCY: int = 4  # empirically confirmed Phase 1 (N=4: 4/4 200, mean=0.81s)
     LOG_JSON: bool = True
     LOG_LEVEL: str = "INFO"
