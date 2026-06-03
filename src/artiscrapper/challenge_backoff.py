@@ -181,11 +181,27 @@ async def record_block(cache: aiosqlite.Connection) -> None:
                 )
 
         now = int(time.time())
+        # WR-01: snapshot the pre-mutation state so we can revert if
+        # _persist raises (sqlite full / locked / IO error). Without the
+        # revert, the in-memory _STATE would advance (retry_count++,
+        # next_allowed_at moved forward) while the durable row stays
+        # behind — after a container restart the gate would re-open
+        # 60s × 2^N too early. The persist failure still propagates to
+        # the caller (which is now wrapped by WR-02 in main.py).
+        prev = (_STATE.retry_count, _STATE.last_block_at, _STATE.next_allowed_at)
         _STATE.retry_count += 1
         wait_s = min(_BASE_S * (2 ** (_STATE.retry_count - 1)), _BACKOFF_CAP_S)
         _STATE.last_block_at = now
         _STATE.next_allowed_at = now + wait_s
-        await _persist(cache)
+        try:
+            await _persist(cache)
+        except Exception:
+            (
+                _STATE.retry_count,
+                _STATE.last_block_at,
+                _STATE.next_allowed_at,
+            ) = prev
+            raise
 
 
 async def record_success(cache: aiosqlite.Connection) -> None:
