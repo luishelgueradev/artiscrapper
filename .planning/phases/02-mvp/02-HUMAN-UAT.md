@@ -3,7 +3,7 @@ status: resolved
 phase: 02-mvp
 source: ["02-VERIFICATION.md"]
 started: 2026-06-02T08:00:00Z
-updated: 2026-06-02T11:10:00Z
+updated: 2026-06-03T17:25:00Z
 operator: claude (per feedback_agent_as_uat_operator memory)
 ---
 
@@ -80,26 +80,38 @@ evidence: |
 ## Summary
 
 total: 4
-passed: 3
+passed: 4
 issues: 0
 pending: 0
 skipped: 0
 blocked: 0
-partial: 1
+partial: 0
 
 ## Gaps
 
-### G-01 (informational, not phase-blocking): dev-box LLM model lineup
-The Ollama backend on this dev-box currently exposes `llama3.2:3b-instruct-q4_K_M` (no json_mode)
-and registers but does not serve `qwen2.5-7b-instruct-q4km` (econnrefused upstream).
-Phase 2's LLM curator requires json_mode for strict structured output. Without it, the
-post-fix degraded-mode fallback kicks in and the parser's heuristic price extraction
-returns 5 prices instead of the ≥6 threshold for SC-1 strict pass.
+### G-01 (RESOLVED 2026-06-03): dev-box LLM routing + parser carousel extraction
+Originally filed as "load qwen2.5 in Ollama". Investigation surfaced two distinct
+underlying defects, both fixed:
 
-**Recommended dev-box config (out of Phase 2 scope):**
-- `ollama pull qwen2.5:7b-instruct-q4_K_M` so the router-mapped alias resolves to a loaded model
-- Then `LLM_MODEL=qwen2.5-7b-instruct-q4km` (or whichever the router exposes as json_mode-capable)
-- Re-run `E2E=1 pytest tests/test_e2e.py::test_serp_pelota` to confirm ≥6/6 prices
+1. **LLM router alias mismatch** — `qwen2.5-7b-instruct-q4km` mapped to a backend
+   `llamacpp` container that doesn't exist in the local-llms stack (ENOTFOUND
+   silent timeout 30s). The local-llms maintainer shipped Wave 2 of `/v1/models`
+   with a top-level `recommendations` map. Artiscrapper now reads
+   `recommendations.chat-json-strict-default` once at boot (cached process-wide);
+   today resolves to `chat-local` which routes to `qwen2.5:7b-instruct-q4_K_M`
+   in Ollama. Future-proof against alias rename. Commit `0af57a7`.
 
-This is a deploy-time configuration item, not a Phase 2 architectural defect. The codebase
-handles the missing-json_mode case correctly via degraded fallback (commit 0af57a7).
+2. **Parser silently dropped carousel + extracted no prices** — `div.Ez5pwe`
+   carousel extractor required `<a href>` inside each card (Google wraps clicks
+   in JS handlers with data-iid encoded in inline `<script>`). 100% of carousel
+   items returned None → 176 across 10 fixtures lost. Price selectors
+   (`.price`, `.precio`, `[aria-label*='precio']`) never matched Google's
+   obfuscated rotating classes (`LI0TWe`, `zxVpA`, `lmQWe`, etc.) → 0 prices
+   ever extracted by the parser. Refactored to regex-first signal extraction
+   on `node.text()`, plus synthetic Google-search URL for carousel items.
+   Commit `160c133`. Empirical lift: 0 → 214 candidates-with-price; 143
+   store_hints, 95 installments, 24 stock indicators, 10 free_shipping flags
+   newly surfaced.
+
+SC-1 now passes 2/2 strict e2e against the live dev-box (46s wall-clock,
+9 of 15 returned results carry prices vs ≥6 threshold).
