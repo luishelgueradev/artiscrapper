@@ -476,7 +476,15 @@ async def search(
             # arming). MUST happen BEFORE the response return so the
             # state is durable even if the response serialization
             # subsequently fails.
-            await record_block(request.app.state.cache)
+            # WR-02: a transient sqlite error (disk full, WAL locked,
+            # busy-timeout exhausted) must NOT bubble out and turn a
+            # genuine block into an opaque 500. The block_detected=true
+            # response shape is the consumer contract; observability
+            # writes must not be load-bearing for it.
+            try:
+                await record_block(request.app.state.cache)
+            except Exception as exc:
+                log.warning("record_block_failed", error=type(exc).__name__)
             elapsed_ms = int((time.time() - t_start) * 1000)
             return SearchResponse(
                 query=body.query,
@@ -488,12 +496,6 @@ async def search(
                 ),
             )
 
-        # Plan 03-02 / D-07: success path — record_success is a no-op
-        # unless ≥1h has passed since last_block_at, in which case it
-        # resets retry_count to 0 and clears next_allowed_at. This is
-        # the recovery trigger after a Google IP cool-off window.
-        await record_success(request.app.state.cache)
-
         # ── [4] parse_serp on both results ──
         candidates_a = parse_serp(html_a) if html_a else []
         candidates_b = parse_serp(html_b) if html_b else []
@@ -502,6 +504,24 @@ async def search(
         all_candidates = candidates_a + candidates_b
         all_candidates = dedupe(all_candidates)
         all_candidates = [c for c in all_candidates if not is_junk(c["url"])]
+
+        # Plan 03-02 / D-07: success path — record_success is a no-op
+        # unless ≥1h has passed since last_block_at, in which case it
+        # resets retry_count to 0 and clears next_allowed_at. This is
+        # the recovery trigger after a Google IP cool-off window.
+        # WR-07: only treat the fetch as a SUCCESS if at least one
+        # candidate survived parse + dedupe + junk blocklist. A 200 OK
+        # with zero SERP cards (consent interstitial that bypassed
+        # _detect_block, A/B layout, empty-results page) would otherwise
+        # reset retry_count=0 and reopen the gate on every retry —
+        # exactly the failure mode the D-07 >=1h gate was designed to
+        # prevent.
+        # WR-02: protect the same way as record_block above.
+        if all_candidates:
+            try:
+                await record_success(request.app.state.cache)
+            except Exception as exc:
+                log.warning("record_success_failed", error=type(exc).__name__)
 
         candidates_total = len(all_candidates)
         log.info("parse_done", candidates_total=candidates_total)
