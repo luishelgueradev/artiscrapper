@@ -33,6 +33,32 @@ os.environ["CACHE_DB_PATH"] = _tmp_db.name
 os.environ.setdefault("API_KEYS", "test-key-1")
 
 
+@pytest.fixture(autouse=True)
+def _reset_sentry_client():
+    """
+    Reset the Sentry global client between tests so a prior test's
+    `_init_sentry()` call doesn't leak into the next test's
+    `get_client().is_active()` assertion. Uses Scope.set_client(None) which
+    replaces the active client with a NonRecordingClient (sentry-sdk 2.x API).
+    """
+    yield
+    # Tear down any active client BEFORE the next test reloads logging_setup.
+    try:
+        # Close the active client (flushes pending events with a quick timeout).
+        client = sentry_sdk.get_client()
+        if client.is_active():
+            try:
+                client.close(timeout=0.0)
+            except Exception:
+                pass
+        # Replace with NonRecordingClient so is_active() returns False.
+        sentry_sdk.get_current_scope().set_client(None)
+        sentry_sdk.get_isolation_scope().set_client(None)
+        sentry_sdk.get_global_scope().set_client(None)
+    except Exception:
+        pass
+
+
 def _make_mock_browser() -> MagicMock:
     mock_page = AsyncMock()
     mock_page.evaluate = AsyncMock(return_value=1)
@@ -119,26 +145,24 @@ def test_correlation_id_tag(monkeypatch):
         correlation_id.reset(token)
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="lifespan log lines wired in Task 3 — Wave 1 ships module-level _init_sentry only",
-)
 @pytest.mark.parametrize("dsn,expected_event", [
     ("", "sentry_init_skipped"),
     ("https://fake@sentry.invalid/1", "sentry_init_done"),
 ])
-def test_lifespan_log_matches_sdk_state(monkeypatch, dsn, expected_event):
+def test_lifespan_log_matches_sdk_state(monkeypatch, caplog, dsn, expected_event):
     """
     WRN-04 (D-19): the lifespan emits exactly one of
     `sentry_init_done` / `sentry_init_skipped`; the event name MUST match
     sentry_sdk.get_client().is_active() — they cannot diverge.
 
-    Marked xfail until Task 3 wires the lifespan log line that reads from
-    sentry_sdk.get_client().is_active() instead of branching on settings.
+    Implementation note: structlog.testing.capture_logs() does NOT survive
+    `configure_logging()` reconfiguring the processor chain inside lifespan
+    (the new processor chain is built from scratch). We instead drive
+    structlog through stdlib logging (LoggerFactory) and use pytest's
+    `caplog` fixture which hooks the stdlib root logger at the propagate
+    level — capturing the JSON-rendered messages.
     """
-    pytest.importorskip("structlog.testing")
-    import structlog
-    from structlog.testing import capture_logs
+    import logging as _logging
 
     monkeypatch.setenv("SENTRY_DSN", dsn)
     monkeypatch.setenv("API_KEYS", "test-key-1")
@@ -160,22 +184,28 @@ def test_lifespan_log_matches_sdk_state(monkeypatch, dsn, expected_event):
 
     monkeypatch.setattr(main_mod, "launch_async", _fake_launch_async)
 
-    with capture_logs() as logs:
-        with TestClient(main_mod.app):
-            pass  # boot + shutdown — enough to emit lifespan logs
+    caplog.set_level(_logging.INFO)
+    with TestClient(main_mod.app):
+        pass  # boot + shutdown — enough to emit lifespan logs
 
-    sentry_log_events = [
-        ev for ev in logs
-        if ev.get("event") in ("sentry_init_done", "sentry_init_skipped")
+    # JSON-rendered structlog events flow through stdlib logging; caplog.text
+    # concatenates all captured records (level + logger + message). We grep
+    # for the event key serialized into the JSON.
+    sentry_lines = [
+        msg for msg in caplog.messages
+        if "sentry_init_done" in msg or "sentry_init_skipped" in msg
     ]
-    assert len(sentry_log_events) >= 1, (
-        f"WRN-04: lifespan must emit a sentry_init_* log; captured: "
-        f"{[ev.get('event') for ev in logs]}"
+    assert len(sentry_lines) >= 1, (
+        f"WRN-04: lifespan must emit a sentry_init_* log; "
+        f"captured messages were:\n  " + "\n  ".join(caplog.messages[:30])
     )
-    actual_event = sentry_log_events[-1]["event"]
+    actual_event = (
+        "sentry_init_done" if "sentry_init_done" in sentry_lines[-1]
+        else "sentry_init_skipped"
+    )
     assert actual_event == expected_event, (
         f"WRN-04: expected event {expected_event!r} for DSN={dsn!r}; "
-        f"got {actual_event!r}"
+        f"got {actual_event!r} on line: {sentry_lines[-1]}"
     )
     # Cross-check the SDK state against the log event name.
     is_active = sentry_sdk.get_client().is_active()

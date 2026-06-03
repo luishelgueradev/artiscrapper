@@ -80,6 +80,15 @@ def test_client(monkeypatch):
 
     with TestClient(app) as client:
         app.state.browser = mock_browser
+        # D-04 in-memory limiter: reset between tests so prior test bleed
+        # (e.g., the rate-limit integration test that consumes 60+ requests
+        # on the same X-API-Key) doesn't cause this test to see 429s.
+        try:
+            limiter = app.state.limiter  # type: ignore[attr-defined]
+            if hasattr(limiter, "reset"):
+                limiter.reset()
+        except Exception:
+            pass
         yield client
 
 

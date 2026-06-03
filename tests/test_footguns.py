@@ -16,8 +16,6 @@ Phase 3 extensions:
 import subprocess
 import sys
 
-import pytest
-
 
 def test_no_uvloop_installed():
     """D6: uvloop must not be importable in the runtime environment."""
@@ -125,10 +123,6 @@ def test_sentry_does_not_pull_uvloop():
     )
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="main.py wiring lands in Task 3 — make_asgi_app() not present yet",
-)
 def test_metrics_endpoint_unprotected_by_design():
     """
     D-10: /metrics must be mounted via prometheus_client.make_asgi_app() so

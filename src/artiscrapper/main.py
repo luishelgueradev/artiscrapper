@@ -17,12 +17,17 @@ from contextlib import asynccontextmanager
 
 import aiosqlite
 import httpx
+import sentry_sdk
 import structlog
 from asgi_correlation_id import CorrelationIdMiddleware
 from cloakbrowser import launch_async  # Phase 1 confirmed: this is the correct import path
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import ORJSONResponse
+from prometheus_client import make_asgi_app
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from .auth import _parse_api_keys, get_api_key, verify_api_key
 from .browser import fetch_serp
 from .cache import (
     PRAGMAS,
@@ -37,7 +42,7 @@ from .config import settings
 from .freshness import assess_freshness
 from .llm import curate_candidates, router_health_check
 from .logging_setup import configure_logging
-from .metrics import metrics
+from .metrics import inc_block_detected, metrics, search_elapsed  # noqa: F401  (metrics kept for backwards-compat readers)
 from .models import Candidate, Metadata, SearchRequest, SearchResponse
 from .rate_limit import GoogleRateLimiter
 from .search import build_serp_url, dedupe, is_junk, parse_serp, rerank
@@ -141,6 +146,36 @@ async def lifespan(app: FastAPI):
     await app.state.cache.commit()
     await init_schema(app.state.cache)
 
+    # 1b. Phase 3 — D-19 empirical-retest gates (Phase 2 memory
+    # `feedback_empirical_retest_after_default_changes`). Each new env-var
+    # default emits a structured log line so `docker compose logs | grep ...`
+    # can confirm the value reached the hot path. OBS-05: log the count /
+    # quota, NEVER the API_KEYS values or the SENTRY_DSN.
+    log.info(
+        "api_keys_loaded",
+        count=len(_parse_api_keys()),
+        rate_per_min=settings.API_RATE_PER_MINUTE,
+        rate_per_day=settings.API_RATE_PER_DAY,
+    )
+    # WRN-04: derive the log event name from the actual SDK state (which
+    # `_init_sentry()` already settled at logging_setup module-import time)
+    # so the log line and `sentry_sdk.get_client().is_active()` cannot
+    # diverge. Branching on `settings.SENTRY_DSN` alone would be a
+    # shadowing risk (Phase 2 lesson D-19).
+    _sentry_active = sentry_sdk.get_client().is_active()
+    log.info(
+        "sentry_init_done" if _sentry_active else "sentry_init_skipped",
+        traces_sample_rate=0.1 if _sentry_active else None,
+    )
+    log.info(
+        "rate_limit_init",
+        per_min=settings.API_RATE_PER_MINUTE,
+        per_day=settings.API_RATE_PER_DAY,
+    )
+    # NOTE: `challenge_backoff_init` is INSERTED HERE by Plan 03-02 Task 3
+    # (BETWEEN rate_limit_init and boot_done). Do not pre-emptively add it
+    # in this plan — coordination contract documented in 03-01-PLAN.md.
+
     # 2. Cloak browser (Phase 1 confirmed: from cloakbrowser import launch_async)
     app.state.browser = await launch_async(headless=settings.HEADLESS)
     app.state.browser_uses = 0
@@ -179,6 +214,21 @@ app = FastAPI(
     title="artiscrapper",
     version=settings.VERSION,
 )
+
+# ── Phase 3 — slowapi + /metrics ASGI sub-app mount ──
+# Registered BEFORE CorrelationIdMiddleware so the middleware (added last =
+# executed first) wraps slowapi's 429 responses → 429s still carry the
+# request's X-Request-ID (03-RESEARCH.md §C5). headers_enabled=True makes
+# 429 responses include X-RateLimit-* and Retry-After (§C4).
+limiter = Limiter(key_func=get_api_key, headers_enabled=True)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# D-10: /metrics is mounted as an ASGI sub-app so it bypasses FastAPI
+# middleware (no slowapi, no CorrelationIdMiddleware, no auth dependency).
+# This is by design — see test_metrics_endpoint_unprotected_by_design.
+app.mount("/metrics", make_asgi_app())
+
 # CorrelationIdMiddleware must be outermost (added last = executed first in request chain)
 app.add_middleware(CorrelationIdMiddleware)
 
@@ -263,10 +313,33 @@ async def health_deep(request: Request) -> dict:
 
 
 @app.post("/search", response_model=SearchResponse)
-async def search(request: Request, body: SearchRequest) -> SearchResponse:
+@limiter.limit("60/minute")
+@limiter.limit("10000/day")
+async def search(
+    request: Request,
+    response: Response,
+    body: SearchRequest,
+    _api_key: str = Depends(verify_api_key),
+) -> SearchResponse:
     """
     POST /search — Full 10-step pipeline wired in plan 02-02.
     Field name is 'query' (NOT 'q') per PRD SEARCH-01.
+
+    Phase 3:
+      - D-01/D-03: `verify_api_key` FastAPI dependency enforces X-API-Key
+        (401 on missing/unknown). `request: Request` MUST stay first
+        positional arg (slowapi requirement — 03-RESEARCH.md §C2).
+      - D-02: stacked `@limiter.limit("60/minute") + @limiter.limit("10000/day")`
+        first-to-fire wins → 429 with Retry-After header (slowapi 0.1.9).
+      - `response: Response` is declared so slowapi (with headers_enabled=True)
+        can inject X-RateLimit-* + Retry-After headers into success responses.
+        Without this param, slowapi raises "parameter `response` must be an
+        instance of starlette.responses.Response" because FastAPI hasn't yet
+        serialized the SearchResponse pydantic model when the limiter
+        post-processes.
+      - D-12: full body wrapped in `with search_elapsed.time():` (context-
+        manager form — NEVER `@search_elapsed.time()` decorator on async def
+        per 03-RESEARCH.md §A5 / Pitfall 1).
 
     [1] cache lookup → [2] Google fetch (parallel A+B) → [3] detect_block →
     [4] parse_serp → [5] merge+dedupe+blocklist → [6] LLM filter (or degraded mode) →
@@ -274,224 +347,231 @@ async def search(request: Request, body: SearchRequest) -> SearchResponse:
     """
     t_start = time.time()
 
-    # Bind per-request structlog context (OBS-05: only cache key prefix, never full query)
-    cache_key = make_cache_key(body.query)
-    query_norm = normalize_query(body.query)
-    structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(
-        query_hash=cache_key[:12],
-        stage="search",
-    )
-
-    # ── [1] Cache lookup (CACHE-05: ALWAYS before any Google fetch) ──
-    cached = await get_cached(request.app.state.cache, cache_key)
-    if cached is not None:
-        log.info("cache_hit")
-        elapsed_ms = int((time.time() - t_start) * 1000)
-        return SearchResponse(
-            query=body.query,
-            results=cached.get("results", []),
-            metadata=Metadata(
-                elapsed_ms=elapsed_ms,
-                cache_hit=True,
-                candidates_total=len(cached.get("results", [])),
-            ),
+    # D-12: bracket the entire pipeline so the Histogram captures wall-clock
+    # of every code path (cache-hit, block-detected 503, normal-flow 200).
+    # Plan 03-02 will INSERT `await check_gate(...)` as step [1.5] AFTER the
+    # cache-hit early-return AND INSIDE this `with` block — see coordination
+    # notes in 03-01-PLAN.md and 03-02-PLAN.md.
+    with search_elapsed.time():
+        # Bind per-request structlog context (OBS-05: only cache key prefix, never full query)
+        cache_key = make_cache_key(body.query)
+        query_norm = normalize_query(body.query)
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(
+            query_hash=cache_key[:12],
+            stage="search",
         )
 
-    log.info("cache_miss")
+        # ── [1] Cache lookup (CACHE-05: ALWAYS before any Google fetch) ──
+        cached = await get_cached(request.app.state.cache, cache_key)
+        if cached is not None:
+            log.info("cache_hit")
+            elapsed_ms = int((time.time() - t_start) * 1000)
+            return SearchResponse(
+                query=body.query,
+                results=cached.get("results", []),
+                metadata=Metadata(
+                    elapsed_ms=elapsed_ms,
+                    cache_hit=True,
+                    candidates_total=len(cached.get("results", [])),
+                ),
+            )
 
-    # ── [2] Google fetch: parallel A (query) + B (query + mercadolibre) ──
-    browser = request.app.state.browser
-    rate_limiter = request.app.state.rate_limit
+        log.info("cache_miss")
 
-    url_a = build_serp_url(body.query, meli=False)
-    url_b = build_serp_url(body.query, meli=True)
+        # ── [2] Google fetch: parallel A (query) + B (query + mercadolibre) ──
+        browser = request.app.state.browser
+        rate_limiter = request.app.state.rate_limit
 
-    html_a, block_a = "", None
-    html_b, block_b = "", None
-    block_detected = False
+        url_a = build_serp_url(body.query, meli=False)
+        url_b = build_serp_url(body.query, meli=True)
 
-    try:
-        (html_a, block_a), (html_b, block_b) = await asyncio.gather(
-            fetch_serp(browser, url_a, rate_limiter),
-            fetch_serp(browser, url_b, rate_limiter),
-        )
-        request.app.state.browser_uses += 2
-    except Exception as exc:
-        log.warning("google_fetch_failed", error=str(type(exc).__name__))
-        elapsed_ms = int((time.time() - t_start) * 1000)
-        return SearchResponse(
-            query=body.query,
-            results=[],
-            metadata=Metadata(
-                elapsed_ms=elapsed_ms,
-                cache_hit=False,
-                block_detected=False,
-            ),
-        )
+        html_a, block_a = "", None
+        html_b, block_b = "", None
+        block_detected = False
 
-    # ── [3] detect_block ──
-    if block_a or block_b:
-        block_detected = True
-        block_reason = block_a or block_b
-        log.warning("google_fetch_blocked", reason=block_reason)
-        metrics.block_detected_total[block_reason] += 1  # OBS-06
-        elapsed_ms = int((time.time() - t_start) * 1000)
-        return SearchResponse(
-            query=body.query,
-            results=[],
-            metadata=Metadata(
-                elapsed_ms=elapsed_ms,
-                cache_hit=False,
-                block_detected=True,
-            ),
-        )
+        try:
+            (html_a, block_a), (html_b, block_b) = await asyncio.gather(
+                fetch_serp(browser, url_a, rate_limiter),
+                fetch_serp(browser, url_b, rate_limiter),
+            )
+            request.app.state.browser_uses += 2
+        except Exception as exc:
+            log.warning("google_fetch_failed", error=str(type(exc).__name__))
+            elapsed_ms = int((time.time() - t_start) * 1000)
+            return SearchResponse(
+                query=body.query,
+                results=[],
+                metadata=Metadata(
+                    elapsed_ms=elapsed_ms,
+                    cache_hit=False,
+                    block_detected=False,
+                ),
+            )
 
-    # ── [4] parse_serp on both results ──
-    candidates_a = parse_serp(html_a) if html_a else []
-    candidates_b = parse_serp(html_b) if html_b else []
+        # ── [3] detect_block ──
+        if block_a or block_b:
+            block_detected = True
+            block_reason = block_a or block_b
+            log.warning("google_fetch_blocked", reason=block_reason)
+            # D-11 bridge: dual-write to dataclass + prometheus Counter.
+            inc_block_detected(block_reason)  # OBS-06
+            elapsed_ms = int((time.time() - t_start) * 1000)
+            return SearchResponse(
+                query=body.query,
+                results=[],
+                metadata=Metadata(
+                    elapsed_ms=elapsed_ms,
+                    cache_hit=False,
+                    block_detected=True,
+                ),
+            )
 
-    # ── [5] merge + dedupe + junk-domain blocklist ──
-    all_candidates = candidates_a + candidates_b
-    all_candidates = dedupe(all_candidates)
-    all_candidates = [c for c in all_candidates if not is_junk(c["url"])]
+        # ── [4] parse_serp on both results ──
+        candidates_a = parse_serp(html_a) if html_a else []
+        candidates_b = parse_serp(html_b) if html_b else []
 
-    candidates_total = len(all_candidates)
-    log.info("parse_done", candidates_total=candidates_total)
+        # ── [5] merge + dedupe + junk-domain blocklist ──
+        all_candidates = candidates_a + candidates_b
+        all_candidates = dedupe(all_candidates)
+        all_candidates = [c for c in all_candidates if not is_junk(c["url"])]
 
-    # ── [6] LLM curator (or degraded mode) ──
-    llm_degraded = False
-    llm_filtered_out = 0
+        candidates_total = len(all_candidates)
+        log.info("parse_done", candidates_total=candidates_total)
 
-    router_healthy = await router_health_check(
-        settings.LLM_ROUTER_URL,
-        settings.LLM_ROUTER_BEARER_TOKEN,
-    )
+        # ── [6] LLM curator (or degraded mode) ──
+        llm_degraded = False
+        llm_filtered_out = 0
 
-    if router_healthy and all_candidates:
-        survivors, llm_filtered_out, llm_degraded = await curate_candidates(
-            all_candidates,
+        router_healthy = await router_health_check(
             settings.LLM_ROUTER_URL,
             settings.LLM_ROUTER_BEARER_TOKEN,
-            concurrency=settings.LLM_CONCURRENCY,
         )
-        # LLM-06: if the curator dropped everything because the router systematically
-        # failed (e.g., model_capability_mismatch returns 400 for every call), fall back
-        # to the same heuristic-only mode the router-down branch uses. Without this,
-        # `llm_degraded=True` would surface in metadata but the response would be empty.
-        if llm_degraded and not survivors:
-            log.warning("llm_degraded_all_dropped_fallback_to_heuristic")
+
+        if router_healthy and all_candidates:
+            survivors, llm_filtered_out, llm_degraded = await curate_candidates(
+                all_candidates,
+                settings.LLM_ROUTER_URL,
+                settings.LLM_ROUTER_BEARER_TOKEN,
+                concurrency=settings.LLM_CONCURRENCY,
+            )
+            # LLM-06: if the curator dropped everything because the router systematically
+            # failed (e.g., model_capability_mismatch returns 400 for every call), fall back
+            # to the same heuristic-only mode the router-down branch uses. Without this,
+            # `llm_degraded=True` would surface in metadata but the response would be empty.
+            if llm_degraded and not survivors:
+                log.warning("llm_degraded_all_dropped_fallback_to_heuristic")
+                survivors = [c for c in all_candidates if c.get("has_price")]
+                if not survivors:
+                    survivors = all_candidates
+                llm_filtered_out = candidates_total - len(survivors)
+        else:
+            # LLM-06: degraded mode — router down or no candidates
+            if not router_healthy:
+                llm_degraded = True
+                log.warning("llm_degraded_router_down")
+            # Heuristic-only filtering: keep candidates that have price_in_card
+            # or that weren't filtered by the junk-domain blocklist (already done above)
             survivors = [c for c in all_candidates if c.get("has_price")]
             if not survivors:
-                survivors = all_candidates
+                survivors = all_candidates  # fallback: keep all non-junk candidates
             llm_filtered_out = candidates_total - len(survivors)
-    else:
-        # LLM-06: degraded mode — router down or no candidates
-        if not router_healthy:
-            llm_degraded = True
-            log.warning("llm_degraded_router_down")
-        # Heuristic-only filtering: keep candidates that have price_in_card
-        # or that weren't filtered by the junk-domain blocklist (already done above)
-        survivors = [c for c in all_candidates if c.get("has_price")]
-        if not survivors:
-            survivors = all_candidates  # fallback: keep all non-junk candidates
-        llm_filtered_out = candidates_total - len(survivors)
 
-    # ── [7] Visit pass ──
-    # VISIT-03: pass per-request timeout explicitly (not the default)
-    visited_count = 0
-    visit_failed_count = 0
+        # ── [7] Visit pass ──
+        # VISIT-03: pass per-request timeout explicitly (not the default)
+        visited_count = 0
+        visit_failed_count = 0
 
-    if survivors:
-        survivors = await visit_candidates(
-            survivors,
-            visit_timeout_s=body.visit_timeout_s,
-        )
-        visited_count = sum(
-            1
-            for c in survivors
-            if not c.get("meli_skip") and not c.get("visit_failed") and not c.get("skip_dead")
-        )
-        visit_failed_count = sum(1 for c in survivors if c.get("visit_failed"))
-
-    # ── [8] Freshness assessment ──
-    # CR-01 fix: pass candidate as `extracted` so FRESH-02 can read date fields
-    # that visit_one stored via candidate.update(extracted). freshness.py also
-    # reads candidate["freshness_signal"] (set by curate_candidates) directly.
-    for candidate in survivors:
-        fresh_val = assess_freshness(
-            candidate,
-            verdict=None,
-            extracted=candidate,
-        )
-        candidate["fresh"] = fresh_val
-
-    # ── [9] Re-rank ──
-    ranked = rerank(survivors, max_results=body.max_results)
-
-    # ── Build Candidate list ──
-    results = []
-    for c in ranked:
-        # Price priority: parser's price → SERP card price_in_card (now extracted
-        # via regex in search.py, was always None before) → LLM verdict price_hint.
-        # The card-level price is more reliable than the LLM hint (LLM can hallucinate;
-        # the SERP card showed it directly).
-        price_val = c.get("price") or c.get("price_in_card") or c.get("price_hint")
-        results.append(
-            Candidate(
-                url=c["url"],
-                title=c.get("title"),
-                snippet=c.get("snippet"),
-                price=price_val,
-                currency=c.get("currency"),
-                has_price=bool(price_val),
-                fresh=c.get("fresh"),
-                llm_confidence=c.get("llm_confidence", 0.0),
-                freshness_signal=c.get("freshness_signal", "unknown"),
-                installments=c.get("installments"),
-                stock=c.get("stock"),
-                free_shipping=bool(c.get("free_shipping")),
-                rating=c.get("rating"),
-                store_hint=c.get("store_hint"),
-                flags=c.get("flags", []),
+        if survivors:
+            survivors = await visit_candidates(
+                survivors,
+                visit_timeout_s=body.visit_timeout_s,
             )
-        )
-
-    elapsed_ms = int((time.time() - t_start) * 1000)
-
-    # ── [10] Cache write (non-blocking — fire and don't await) ──
-    # Defensive: skip caching empty result sets so a transient pipeline failure
-    # doesn't poison the cache for 24h (would hide subsequent retries' real output).
-    async def _write_cache() -> None:
-        if not results:
-            return
-        try:
-            await set_cached(
-                cache=request.app.state.cache,
-                cache_key=cache_key,
-                query=body.query,
-                query_norm=query_norm,
-                response={"results": [r.model_dump() for r in results]},
-                html_a=html_a,
-                html_b=html_b,
+            visited_count = sum(
+                1
+                for c in survivors
+                if not c.get("meli_skip") and not c.get("visit_failed") and not c.get("skip_dead")
             )
-        except Exception as exc:
-            log.warning("cache_write_failed", error=str(type(exc).__name__))
+            visit_failed_count = sum(1 for c in survivors if c.get("visit_failed"))
 
-    asyncio.create_task(_write_cache())
+        # ── [8] Freshness assessment ──
+        # CR-01 fix: pass candidate as `extracted` so FRESH-02 can read date fields
+        # that visit_one stored via candidate.update(extracted). freshness.py also
+        # reads candidate["freshness_signal"] (set by curate_candidates) directly.
+        for candidate in survivors:
+            fresh_val = assess_freshness(
+                candidate,
+                verdict=None,
+                extracted=candidate,
+            )
+            candidate["fresh"] = fresh_val
 
-    return SearchResponse(
-        query=body.query,
-        results=results,
-        metadata=Metadata(
-            elapsed_ms=elapsed_ms,
-            google_fetches=2,
-            candidates_total=candidates_total,
-            llm_filtered_out=llm_filtered_out,
-            visited=visited_count,
-            visit_failed=visit_failed_count,
-            cache_hit=False,
-            llm_degraded=llm_degraded,
-            block_detected=block_detected,
-        ),
-    )
+        # ── [9] Re-rank ──
+        ranked = rerank(survivors, max_results=body.max_results)
+
+        # ── Build Candidate list ──
+        results = []
+        for c in ranked:
+            # Price priority: parser's price → SERP card price_in_card (now extracted
+            # via regex in search.py, was always None before) → LLM verdict price_hint.
+            # The card-level price is more reliable than the LLM hint (LLM can hallucinate;
+            # the SERP card showed it directly).
+            price_val = c.get("price") or c.get("price_in_card") or c.get("price_hint")
+            results.append(
+                Candidate(
+                    url=c["url"],
+                    title=c.get("title"),
+                    snippet=c.get("snippet"),
+                    price=price_val,
+                    currency=c.get("currency"),
+                    has_price=bool(price_val),
+                    fresh=c.get("fresh"),
+                    llm_confidence=c.get("llm_confidence", 0.0),
+                    freshness_signal=c.get("freshness_signal", "unknown"),
+                    installments=c.get("installments"),
+                    stock=c.get("stock"),
+                    free_shipping=bool(c.get("free_shipping")),
+                    rating=c.get("rating"),
+                    store_hint=c.get("store_hint"),
+                    flags=c.get("flags", []),
+                )
+            )
+
+        elapsed_ms = int((time.time() - t_start) * 1000)
+
+        # ── [10] Cache write (non-blocking — fire and don't await) ──
+        # Defensive: skip caching empty result sets so a transient pipeline failure
+        # doesn't poison the cache for 24h (would hide subsequent retries' real output).
+        async def _write_cache() -> None:
+            if not results:
+                return
+            try:
+                await set_cached(
+                    cache=request.app.state.cache,
+                    cache_key=cache_key,
+                    query=body.query,
+                    query_norm=query_norm,
+                    response={"results": [r.model_dump() for r in results]},
+                    html_a=html_a,
+                    html_b=html_b,
+                )
+            except Exception as exc:
+                log.warning("cache_write_failed", error=str(type(exc).__name__))
+
+        asyncio.create_task(_write_cache())
+
+        return SearchResponse(
+            query=body.query,
+            results=results,
+            metadata=Metadata(
+                elapsed_ms=elapsed_ms,
+                google_fetches=2,
+                candidates_total=candidates_total,
+                llm_filtered_out=llm_filtered_out,
+                visited=visited_count,
+                visit_failed=visit_failed_count,
+                cache_hit=False,
+                llm_degraded=llm_degraded,
+                block_detected=block_detected,
+            ),
+        )

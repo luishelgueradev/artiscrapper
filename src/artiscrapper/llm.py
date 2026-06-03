@@ -17,7 +17,7 @@ import structlog
 from pydantic import BaseModel, Field, ValidationError
 
 from .config import settings
-from .metrics import inc_llm_fallback, metrics  # noqa: F401  (metrics kept for backwards-compat readers)
+from .metrics import inc_llm_fallback, llm_elapsed, metrics  # noqa: F401  (metrics kept for backwards-compat readers)
 
 log = structlog.get_logger()
 
@@ -286,44 +286,49 @@ async def curate_candidates(
     llm_degraded=True when >50% of candidates returned fallback verdicts.
     LLM-08: bearer_token is NEVER logged.
     """
-    sem = asyncio.Semaphore(concurrency)
-    fallback_count = 0
-    kept: list[dict] = []
-    dropped_count = 0
+    # D-12: bracket the curator wall-clock with the LLM histogram. CRITICAL —
+    # context-manager form ONLY (03-RESEARCH.md §A5 / Pitfall 1): decorator
+    # form `@llm_elapsed.time()` on async def measures coroutine creation,
+    # not the awaited completion.
+    with llm_elapsed.time():
+        sem = asyncio.Semaphore(concurrency)
+        fallback_count = 0
+        kept: list[dict] = []
+        dropped_count = 0
 
-    async with httpx.AsyncClient(http2=True) as client:
-        # Resolve canonical alias once per batch — cached for the process lifetime
-        # after first call. Falls back to settings.LLM_MODEL on any error.
-        model = await resolve_model(client, router_url, bearer_token)
-        verdicts = await asyncio.gather(
-            *[
-                classify_candidate(client, c, sem, router_url, bearer_token, model)
-                for c in candidates
-            ]
-        )
-
-    for candidate, verdict in zip(candidates, verdicts):
-        # Track fallback for degraded mode detection (LLM-05)
-        if verdict.reason.startswith("llm_fail:"):
-            fallback_count += 1
-
-        if should_keep(verdict):
-            candidate["llm_confidence"] = verdict.confidence
-            candidate["freshness_signal"] = verdict.freshness_signal
-            if verdict.price_hint is not None:
-                candidate.setdefault("price_hint", verdict.price_hint)
-            kept.append(candidate)
-        else:
-            dropped_count += 1
-            log.debug(
-                "candidate_dropped",
-                # OBS-05: only safe fields logged — no title/snippet/url/reason
-                is_product=verdict.is_product,
-                confidence=round(verdict.confidence, 2),
-                freshness_signal=verdict.freshness_signal,
+        async with httpx.AsyncClient(http2=True) as client:
+            # Resolve canonical alias once per batch — cached for the process lifetime
+            # after first call. Falls back to settings.LLM_MODEL on any error.
+            model = await resolve_model(client, router_url, bearer_token)
+            verdicts = await asyncio.gather(
+                *[
+                    classify_candidate(client, c, sem, router_url, bearer_token, model)
+                    for c in candidates
+                ]
             )
 
-    total = len(candidates)
-    llm_degraded = total > 0 and fallback_count > total * 0.5
+        for candidate, verdict in zip(candidates, verdicts):
+            # Track fallback for degraded mode detection (LLM-05)
+            if verdict.reason.startswith("llm_fail:"):
+                fallback_count += 1
 
-    return kept, dropped_count, llm_degraded
+            if should_keep(verdict):
+                candidate["llm_confidence"] = verdict.confidence
+                candidate["freshness_signal"] = verdict.freshness_signal
+                if verdict.price_hint is not None:
+                    candidate.setdefault("price_hint", verdict.price_hint)
+                kept.append(candidate)
+            else:
+                dropped_count += 1
+                log.debug(
+                    "candidate_dropped",
+                    # OBS-05: only safe fields logged — no title/snippet/url/reason
+                    is_product=verdict.is_product,
+                    confidence=round(verdict.confidence, 2),
+                    freshness_signal=verdict.freshness_signal,
+                )
+
+        total = len(candidates)
+        llm_degraded = total > 0 and fallback_count > total * 0.5
+
+        return kept, dropped_count, llm_degraded
