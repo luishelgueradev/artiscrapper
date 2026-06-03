@@ -187,32 +187,29 @@ def test_lifespan_log_matches_sdk_state(monkeypatch, caplog, dsn, expected_event
 
     monkeypatch.setattr(main_mod, "launch_async", _fake_launch_async)
 
+    # WR-09: clear caplog IMMEDIATELY before the boot so the assertion
+    # below counts only events emitted inside the TestClient context.
+    # Without this, a prior parametrization's lifespan logs survive in
+    # caplog and the previous `sentry_lines[-1]` grep could let a stale
+    # event sneak past as the "last" match.
+    caplog.clear()
     caplog.set_level(_logging.INFO)
     with TestClient(main_mod.app):
         pass  # boot + shutdown — enough to emit lifespan logs
 
-    # JSON-rendered structlog events flow through stdlib logging; caplog.text
-    # concatenates all captured records (level + logger + message). We grep
-    # for the event key serialized into the JSON.
-    sentry_lines = [
-        msg for msg in caplog.messages
-        if "sentry_init_done" in msg or "sentry_init_skipped" in msg
-    ]
-    assert len(sentry_lines) >= 1, (
-        f"WRN-04: lifespan must emit a sentry_init_* log; "
-        f"captured messages were:\n  " + "\n  ".join(caplog.messages[:30])
+    # WR-09: assert EXACTLY one matching event landed for the expected
+    # event name, instead of grepping for the last line containing either
+    # sentry_init_* token. This pins the observable side-effect (the log
+    # line) directly — Phase 2 feedback `feedback_empirical_retest_after_default_changes`.
+    matches = [m for m in caplog.messages if expected_event in m]
+    assert len(matches) == 1, (
+        f"WR-09: expected exactly one {expected_event!r} log line for "
+        f"DSN={dsn!r}; got {len(matches)}. captured messages were:\n  "
+        + "\n  ".join(caplog.messages[:30])
     )
-    actual_event = (
-        "sentry_init_done" if "sentry_init_done" in sentry_lines[-1]
-        else "sentry_init_skipped"
-    )
-    assert actual_event == expected_event, (
-        f"WRN-04: expected event {expected_event!r} for DSN={dsn!r}; "
-        f"got {actual_event!r} on line: {sentry_lines[-1]}"
-    )
-    # Cross-check the SDK state against the log event name.
+    # Cross-check the SDK state against the log event name (D-19 / WRN-04).
     is_active = sentry_sdk.get_client().is_active()
-    if actual_event == "sentry_init_done":
+    if expected_event == "sentry_init_done":
         assert is_active is True, (
             "WRN-04: log says done but get_client().is_active() is False"
         )
