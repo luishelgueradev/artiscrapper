@@ -21,13 +21,30 @@ import pytest
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp_db.close()
 os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-rl")
-os.environ["CACHE_DB_PATH"] = _tmp_db.name
-os.environ.setdefault("API_KEYS", "test-key-1")
+os.environ.setdefault("CACHE_DB_PATH", _tmp_db.name)
+# Append our test key to any existing API_KEYS so we don't clobber a
+# sibling test file's keys (Phase 3 cross-test contract — see
+# tests/integration/test_challenge_backoff.py module docstring).
+_rl_existing_keys = os.environ.get("API_KEYS", "").strip()
+_rl_our_key = "test-key-1"
+if _rl_our_key not in _rl_existing_keys.split(","):
+    os.environ["API_KEYS"] = (
+        f"{_rl_existing_keys},{_rl_our_key}" if _rl_existing_keys else _rl_our_key
+    )
 os.environ.setdefault("SENTRY_DSN", "")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from src.artiscrapper import auth as _auth_module  # noqa: E402
 from src.artiscrapper.main import app  # noqa: E402
+
+# CROSS-TEST IMPORT-ORDER DEFENSE (Phase 3): if a sibling test file
+# imported `app` BEFORE this file's `os.environ.setdefault(...)` lines,
+# both `auth.API_KEYS` AND `config.settings.API_KEYS` are cached with
+# the sibling's values. `_parse_api_keys()` reads from cached settings,
+# so we MUST parse the live env directly to rebuild auth.API_KEYS.
+_live_keys = os.environ.get("API_KEYS", "")
+_auth_module.API_KEYS = {k.strip() for k in _live_keys.split(",") if k.strip()}
 
 
 def _make_mock_browser() -> MagicMock:

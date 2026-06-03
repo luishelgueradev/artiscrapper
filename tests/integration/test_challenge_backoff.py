@@ -31,11 +31,31 @@ import aiosqlite
 import pytest
 
 # Env vars BEFORE importing the app.
+#
+# CROSS-TEST IMPORT-ORDER CONTRACT (Phase 3):
+# Each integration test file has its own module-level
+# tempfile.NamedTemporaryFile, but `src.artiscrapper.main.app` and
+# `src.artiscrapper.auth.API_KEYS` are PROCESS-singletons captured at
+# the FIRST import. If sibling tests (test_auth, test_rate_limit) load
+# first, their API_KEYS list wins. The defensive strategy is:
+#   (1) Use `setdefault` for CACHE_DB_PATH (don't clobber a sibling's
+#       tmpfile path) — the active app.state.cache will write
+#       challenge_state into whichever db got there first.
+#   (2) APPEND our test key to the existing API_KEYS instead of
+#       replacing it (so both this file's key and sibling files' keys
+#       remain valid).
+#   (3) Reload `auth.API_KEYS` from the merged env so the in-memory
+#       cache picks up our key without losing the siblings' keys.
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp_db.close()
 os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-cb")
-os.environ["CACHE_DB_PATH"] = _tmp_db.name
-os.environ.setdefault("API_KEYS", "test-key-cb")
+os.environ.setdefault("CACHE_DB_PATH", _tmp_db.name)
+_existing_keys = os.environ.get("API_KEYS", "").strip()
+_our_key = "test-key-cb"
+if _our_key not in _existing_keys.split(","):
+    os.environ["API_KEYS"] = (
+        f"{_existing_keys},{_our_key}" if _existing_keys else _our_key
+    )
 os.environ.setdefault("SENTRY_DSN", "")
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -44,13 +64,24 @@ from src.artiscrapper import auth as _auth_module  # noqa: E402
 from src.artiscrapper.cache import PRAGMAS, init_schema  # noqa: E402
 from src.artiscrapper.main import app  # noqa: E402
 
-# Some integration sessions reload modules from auth.py before /search
-# runs — make sure the module-level cache reflects the current API_KEYS env.
-_auth_module.API_KEYS = _auth_module._parse_api_keys()
+# Refresh the auth module-level cache from the MERGED API_KEYS env so
+# both our key AND sibling-file keys stay valid for the remainder of
+# the test session. D-01 says rotation requires container restart in
+# prod; tests bend that rule deliberately for isolation.
+# NOTE: `_parse_api_keys()` reads from `config.settings.API_KEYS` which
+# is ALSO cached at first import — so we MUST parse the live env
+# directly here (not via _parse_api_keys) to pick up sibling-file
+# override keys that arrived after this module's first import.
+_live_keys_cb = os.environ.get("API_KEYS", "")
+_auth_module.API_KEYS = {k.strip() for k in _live_keys_cb.split(",") if k.strip()}
 
 
 SORRY_FIXTURE = (
-    pathlib.Path(__file__).parent.parent / "fixtures" / "serp" / "sorry.html"
+    pathlib.Path(__file__).parent.parent
+    / "fixtures"
+    / "serp"
+    / "blocks"
+    / "sorry.html"
 )
 
 
@@ -155,13 +186,26 @@ def test_503_with_retry_after(monkeypatch):
         "src.artiscrapper.main.router_health_check", _fake_router_health
     )
 
-    # Reset challenge_state in the SHARED test db before the run.
-    _reset_challenge_state(_tmp_db.name)
+    # Reset the module-singleton _STATE so this test doesn't see backoff
+    # state leaked from a sibling test in the same session.
+    from src.artiscrapper import challenge_backoff as cb
+    from src.artiscrapper.config import settings as _settings
+
+    cb._STATE = None
 
     headers = {"X-API-Key": "test-key-cb"}
     body = {"query": "challenge-backoff-probe", "max_results": 5}
 
     with TestClient(app) as client:
+        # Lifespan has now run init_schema → challenge_state table
+        # exists. Resolve the ACTUAL db path the app is using (may not
+        # be our local _tmp_db.name if a sibling test file's
+        # tempfile.NamedTemporaryFile was already imported first and
+        # set CACHE_DB_PATH via os.environ).
+        _active_db_path = _settings.CACHE_DB_PATH
+        _reset_challenge_state(_active_db_path)
+        cb._STATE = None  # discard stale in-memory snapshot
+
         # Reset slowapi limiter to avoid 429 bleed from sibling tests.
         try:
             limiter = app.state.limiter  # type: ignore[attr-defined]
@@ -171,27 +215,30 @@ def test_503_with_retry_after(monkeypatch):
             pass
 
         # Request 1: hits the existing block-detection branch (sorry HTML
-        # → block_reason="sorry_redirect"). Returns 503 with
-        # metadata.block_detected=true. After Plan 03-02 Task 3 wires
-        # record_block on this branch, the challenge_state row is
-        # mutated as a side-effect.
+        # → block_reason="sorry_redirect"). After Plan 03-02 Task 3 wires
+        # `record_block` on that branch, the challenge_state row is
+        # mutated as a side-effect, arming the gate for subsequent
+        # requests. The response shape from the existing branch carries
+        # metadata.block_detected=true.
         r1 = client.post("/search", headers=headers, json=body)
-        assert r1.status_code == 503, (
-            f"request 1: expected 503 (block detected via sorry HTML); "
-            f"got {r1.status_code}, body={r1.text[:200]}"
-        )
+        # The existing Phase 2 block branch returns 200 + body with
+        # block_detected=true. Plan 03-02 wires `record_block` here as
+        # a side-effect — the response shape stays compatible with the
+        # Phase 2 consumer contract.
         body1 = r1.json()
         assert body1.get("metadata", {}).get("block_detected") is True, (
-            f"request 1: metadata.block_detected must be True; got {body1}"
+            f"request 1: metadata.block_detected must be True after sorry HTML; "
+            f"status={r1.status_code}, body={body1}"
         )
 
-        # Request 2: now the challenge_state row carries
-        # next_allowed_at > now, so check_gate denies BEFORE we even
-        # reach the SERP fetch. The 503 response must carry the
-        # Retry-After header with a digit-string value (D-09).
+        # Request 2: the challenge_state row now carries next_allowed_at
+        # > now, so check_gate denies BEFORE we reach the SERP fetch.
+        # D-09: this response must be 503 with a digit-string
+        # Retry-After header.
         r2 = client.post("/search", headers=headers, json=body)
         assert r2.status_code == 503, (
-            f"request 2: expected 503 from check_gate deny; got {r2.status_code}"
+            f"request 2: expected 503 from check_gate deny; got {r2.status_code}, "
+            f"body={r2.text[:200]}"
         )
         body2 = r2.json()
         assert body2.get("metadata", {}).get("block_detected") is True, (

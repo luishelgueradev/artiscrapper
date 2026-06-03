@@ -27,6 +27,7 @@ from prometheus_client import make_asgi_app
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from . import challenge_backoff
 from .auth import _parse_api_keys, get_api_key, verify_api_key
 from .browser import fetch_serp
 from .cache import (
@@ -38,6 +39,7 @@ from .cache import (
     prune_loop,
     set_cached,
 )
+from .challenge_backoff import check_gate, record_block, record_success
 from .config import settings
 from .freshness import assess_freshness
 from .llm import curate_candidates, router_health_check
@@ -172,9 +174,18 @@ async def lifespan(app: FastAPI):
         per_min=settings.API_RATE_PER_MINUTE,
         per_day=settings.API_RATE_PER_DAY,
     )
-    # NOTE: `challenge_backoff_init` is INSERTED HERE by Plan 03-02 Task 3
-    # (BETWEEN rate_limit_init and boot_done). Do not pre-emptively add it
-    # in this plan — coordination contract documented in 03-01-PLAN.md.
+    # Plan 03-02 — D-19 empirical retest gate for the ChallengeBackoff
+    # constants. These are hardcoded module-level (D-06 ROADMAP-lock —
+    # NOT thread-able through settings). The log line declares the
+    # values reached the running container so `docker compose logs |
+    # grep challenge_backoff_init` confirms the hot-path values match
+    # expectations (Phase 2 memory `feedback_empirical_retest_after_default_changes`).
+    log.info(
+        "challenge_backoff_init",
+        base_s=challenge_backoff._BASE_S,
+        cap_s=challenge_backoff._BACKOFF_CAP_S,
+        reset_after_s=challenge_backoff._RESET_AFTER_S,
+    )
 
     # 2. Cloak browser (Phase 1 confirmed: from cloakbrowser import launch_async)
     app.state.browser = await launch_async(headless=settings.HEADLESS)
@@ -379,6 +390,39 @@ async def search(
 
         log.info("cache_miss")
 
+        # ── [1.5] ChallengeBackoff gate (D-09 / Plan 03-02) ──
+        # Read-only check on the module-singleton `_STATE` (sqlite query
+        # on first call per process; cached thereafter). When the gate
+        # is closed (a previous block armed the backoff), short-circuit
+        # with 503 + Retry-After BEFORE consuming a Cloak fetch — the
+        # consumer learns the wait window instead of getting a silent
+        # timeout. The latency still counts in `search_elapsed`
+        # (intentional — we're inside the `with` block).
+        allowed, retry_after = await check_gate(request.app.state.cache)
+        if not allowed:
+            # OBS-05: log only the numeric retry_after, NEVER any
+            # sorry-page content. The 503 carries the structured
+            # SearchResponse shape so downstream consumers can parse
+            # metadata.block_detected uniformly with the existing
+            # block branch.
+            log.warning("challenge_backoff_active", retry_after=retry_after)
+            elapsed_ms = int((time.time() - t_start) * 1000)
+            denied_body = SearchResponse(
+                query=body.query,
+                results=[],
+                metadata=Metadata(
+                    elapsed_ms=elapsed_ms,
+                    cache_hit=False,
+                    block_detected=True,
+                ),
+            )
+            return Response(
+                status_code=503,
+                content=denied_body.model_dump_json(),
+                media_type="application/json",
+                headers={"Retry-After": str(retry_after)},
+            )
+
         # ── [2] Google fetch: parallel A (query) + B (query + mercadolibre) ──
         browser = request.app.state.browser
         rate_limiter = request.app.state.rate_limit
@@ -416,6 +460,12 @@ async def search(
             log.warning("google_fetch_blocked", reason=block_reason)
             # D-11 bridge: dual-write to dataclass + prometheus Counter.
             inc_block_detected(block_reason)  # OBS-06
+            # Plan 03-02 / D-09: persist the block event so the next
+            # request's check_gate gate fires (exponential backoff
+            # arming). MUST happen BEFORE the response return so the
+            # state is durable even if the response serialization
+            # subsequently fails.
+            await record_block(request.app.state.cache)
             elapsed_ms = int((time.time() - t_start) * 1000)
             return SearchResponse(
                 query=body.query,
@@ -426,6 +476,12 @@ async def search(
                     block_detected=True,
                 ),
             )
+
+        # Plan 03-02 / D-07: success path — record_success is a no-op
+        # unless ≥1h has passed since last_block_at, in which case it
+        # resets retry_count to 0 and clears next_allowed_at. This is
+        # the recovery trigger after a Google IP cool-off window.
+        await record_success(request.app.state.cache)
 
         # ── [4] parse_serp on both results ──
         candidates_a = parse_serp(html_a) if html_a else []
