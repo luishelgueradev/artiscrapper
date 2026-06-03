@@ -15,6 +15,11 @@ import structlog
 
 from .config import settings
 
+# WR-05: one-shot flag so a Sentry-SDK API drift (e.g. set_tag rename)
+# surfaces ONCE in the structured logs instead of being silently swallowed
+# on every log call. Reset only at module import (process lifetime).
+_sentry_tag_warned: bool = False
+
 
 def add_correlation_id(
     _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
@@ -47,10 +52,21 @@ def add_correlation_id(
         event_dict["correlation_id"] = cid
         # D-16: tag the Sentry scope so UI Filter can group by correlation_id.
         # Wrapped to never bubble an exception out of an observability path.
+        # WR-05: narrow the catch to the known shapes of SDK drift
+        # (AttributeError = method/attribute renamed; RuntimeError = scope
+        # not initialized / no isolation scope) so an unrelated bug
+        # (TypeError, KeyError, etc.) still surfaces. A bare `except
+        # Exception` was masking ALL future SDK regressions silently —
+        # invisible until a Sentry-side spot check. On first miss, leave a
+        # one-shot breadcrumb field on the event dict so the drift is
+        # observable in structured logs without spamming every event.
         try:
             sentry_sdk.get_current_scope().set_tag("correlation_id", cid)
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError):
+            global _sentry_tag_warned
+            if not _sentry_tag_warned:
+                event_dict["sentry_tag_failed"] = True
+                _sentry_tag_warned = True
     return event_dict
 
 
