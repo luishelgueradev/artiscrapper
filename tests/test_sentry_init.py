@@ -29,7 +29,10 @@ import sentry_sdk
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp_db.close()
 os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-sentry")
-os.environ["CACHE_DB_PATH"] = _tmp_db.name
+# WR-04: use setdefault so we don't clobber a sibling test file's tmp
+# DB path (cross-test contract — see tests/integration/test_challenge_backoff.py
+# and tests/test_auth.py docstrings).
+os.environ.setdefault("CACHE_DB_PATH", _tmp_db.name)
 os.environ.setdefault("API_KEYS", "test-key-1")
 
 
