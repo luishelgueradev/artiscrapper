@@ -21,7 +21,7 @@ The architecture survives research with **13 LOCKED deviations** from the PRD (D
 
 - [x] **Phase 1: Spike & Empirical Validation** - Answer 12 Phase-0-spike questions, capture fixtures, deliver Go/No-Go (no production code) (completed 2026-06-01)
 - [x] **Phase 2: MVP** - Endpoint `/search` end-to-end with all 53 v1 requirements, Docker image, tests, validated against PRD §10 success criteria (completed 2026-06-02)
-- [ ] **Phase 3: Robustness** - Prometheus metrics, Sentry, rate-limit per API-key, challenge detection + backoff, degraded mode, fixture-based integration suite
+- [x] **Phase 3: Robustness** - Prometheus metrics, Sentry, rate-limit per API-key, challenge detection + backoff, degraded mode, fixture-based integration suite (completed 2026-06-03)
 - [ ] **Phase 4: Production Operations** - Grafana dashboards, Loki, cache invalidation endpoint, tracing — only on demand from prod telemetry
 - [ ] **Phase 5: Expansion** - Per-supplier adapters, residential proxy, async+SSE, multi-tenant auth — deferred until Sánchez grows past current scope
 
@@ -121,7 +121,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-02-PLAN.md — ChallengeBackoff + degraded mode + integration suite (covers D-05..D-09, D-18/D-19/D-20). Adds `challenge_backoff.py` module-singleton state machine (mirrors `llm.py::resolve_model` pattern) with `min(60 * 2^retries, 3600)` curve and sqlite `challenge_state` single-row persistence; `/search` returns 503 + Retry-After in backoff. Ships `tests/integration/` fixture-replay suite validating LLM-down ≥5 useful results (LLM-06 hardening) and ≥85% catalog price extraction (D12 production gate). Closes ROADMAP success criteria 4, 5, 6.
+- [x] 03-02-PLAN.md — ChallengeBackoff + degraded mode + integration suite (covers D-05..D-09, D-18/D-19/D-20). Adds `challenge_backoff.py` module-singleton state machine (mirrors `llm.py::resolve_model` pattern) with `min(60 * 2^retries, 3600)` curve and sqlite `challenge_state` single-row persistence; `/search` returns 503 + Retry-After in backoff. Ships `tests/integration/` fixture-replay suite validating LLM-down ≥5 useful results (LLM-06 hardening) and ≥85% catalog price extraction (D12 production gate). Closes ROADMAP success criteria 4, 5, 6.
 
 **Duration**: 1 week (matches PRD §7 Fase 2 estimate)
 
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
 | 2. MVP | 3/3 | Complete   | 2026-06-02 |
-| 3. Robustness | 1/2 | In Progress|  |
+| 3. Robustness | 2/2 | Complete   | 2026-06-03 |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
 
