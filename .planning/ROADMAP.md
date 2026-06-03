@@ -141,7 +141,7 @@ Plans:
 
 Plans:
 
-- [ ] 04-01: Grafana + Loki on the VPS — Compose additions for `grafana`, `loki`, `promtail` containers; provisioned dashboard JSON committed under `ops/grafana/`; structlog already emits JSON so promtail tail of container logs suffices; Loki query examples in `ops/loki/QUERIES.md`. Only ship if Luis or Sánchez asks; otherwise Phase 2 inline counters + Phase 3 `/metrics` cover ops needs.
+- [x] 04-01: Grafana + Loki on the VPS — Compose additions for `grafana`, `loki`, `promtail` containers; provisioned dashboard JSON committed under `ops/grafana/`; structlog already emits JSON so promtail tail of container logs suffices; Loki query examples in `ops/loki/QUERIES.md`. Only ship if Luis or Sánchez asks; otherwise Phase 2 inline counters + Phase 3 `/metrics` cover ops needs. (completed 2026-06-03)
 - [ ] 04-02: Cache invalidation + tracing (optional) — `POST /admin/cache/invalidate` with API-key gating, query-hash or wildcard target; OpenTelemetry instrumentation via `opentelemetry-instrumentation-fastapi` + manual spans on the Cloak/LLM/visit hot paths. Tracing ships ONLY if P95 cold latency exceeds PRD §10 budget (>40s) for 2+ days in prod.
 
 **Duration**: On demand (PRD §7 Fase 3 — "a demanda", no a-priori schedule)
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
 | 2. MVP | 3/3 | Complete   | 2026-06-02 |
-| 3. Robustness | 2/2 | Complete   | 2026-06-03 |
+| 3. Robustness | 2/2 | Complete    | 2026-06-03 |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
 

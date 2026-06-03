@@ -63,7 +63,7 @@ Requerimientos para llegar a "production-ready" (GSD Phase 1 → Phase 2 → Pha
 - [ ] **OBS-04**: asgi-correlation-id middleware en FastAPI propaga `X-Request-ID` (genera UUID si no viene del cliente).
 - [ ] **OBS-05**: NO loguear contenido scrapeado (titles, snippets, URLs, raw HTML). Whitelist de campos en cada log site.
 - [ ] **OBS-06**: Counter `artiscrapper_llm_fallback_total{reason}` y `artiscrapper_visit_failed_total{host}` instrumented inline (incluso pre-Prometheus; expuestos en Fase 2).
-- [ ] **OBS-07** (Fase 2): Endpoint `/metrics` Prometheus con counters anteriores + histograms `artiscrapper_search_elapsed_seconds`, `artiscrapper_llm_elapsed_seconds`, `artiscrapper_visit_elapsed_seconds{stage}`.
+- [x] **OBS-07** (Fase 2): Endpoint `/metrics` Prometheus con counters anteriores + histograms `artiscrapper_search_elapsed_seconds`, `artiscrapper_llm_elapsed_seconds`, `artiscrapper_visit_elapsed_seconds{stage}`.
 
 ### Browser Lifecycle (BROWSER)
 
@@ -199,7 +199,7 @@ Phase mapping per `.planning/ROADMAP.md`. **GSD Phase numbering:** 1 = Spike (PR
 | OBS-04 | Phase 2 (MVP) | Pending |
 | OBS-05 | Phase 2 (MVP) | Pending |
 | OBS-06 | Phase 2 (MVP) | Pending |
-| OBS-07 | Phase 3 (Robustness) | Pending |
+| OBS-07 | Phase 3 (Robustness) | Complete |
 | NF-01 | Phase 2 (MVP) | Pending |
 | NF-02 | Phase 2 (MVP) | Pending |
 | NF-03 | Phase 2 (MVP) | Pending |

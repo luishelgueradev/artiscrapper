@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: Phase 03 complete
-stopped_at: Phase 3 context gathered
-last_updated: "2026-06-03T20:54:05.633Z"
+status: ready_to_plan
+stopped_at: Phase 3 complete (2/2) — ready to discuss Phase 4
+last_updated: 2026-06-03T22:57:07.423Z
 progress:
   total_phases: 5
   completed_phases: 3
@@ -21,19 +21,19 @@ progress:
 
 ## Current Position
 
-Phase: 03 — COMPLETE
-Plan: 1 of 2
+Phase: 4
+Plan: Not started
 
-- **Active phase:** _none yet_ (project initialized, ready to plan)
-- **Phases completed:** 0/5
-- **Plans completed:** 0
+- **Active phase:** _none_ (Phase 3 complete — ready to discuss Phase 4)
+- **Phases completed:** 3/5
+- **Plans completed:** 8/8 milestone-to-date (3+3+2)
 - **Quick tasks completed:** 0
-- **Next command:** `/gsd-plan-phase 1` to start Phase 1 (Spike & Empirical Validation)
+- **Next command:** `/gsd-discuss-phase 4` to start Phase 4 (Production Operations)
 
 ```
-Phase 1 — Spike & Empirical Validation       [ ] not started   (1 day, 0 v1 reqs)
-Phase 2 — MVP                                 [ ] not started   (2-3 days, 53 v1 reqs)
-Phase 3 — Robustness                          [ ] not started   (1 week, OBS-07 + extensions)
+Phase 1 — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
+Phase 2 — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
+Phase 3 — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
 Phase 4 — Production Operations               [ ] deferred      (on demand from prod telemetry)
 Phase 5 — Expansion                           [ ] deferred      (on growth trigger)
 ```
@@ -52,10 +52,14 @@ Phase 5 — Expansion                           [ ] deferred      (on growth tri
 | 2026-06-01 | Parser cascade `tF2Cxc → Ez5pwe → MjjYud → h3-anchored` con alert `parse.cascade.exhausted` (D4) | Google rota selectors obfuscados ~trimestralmente |
 | 2026-06-01 | Heuristic pre-filter (junk-domain blocklist) ANTES del LLM (D9) | Drops ~30% del noise, LLM phase de p95 ~22s a ~10s |
 | 2026-06-01 | LLM confidence=0.3 fallback IS dropped at the <0.4 cut (D2 reconciliación) | PRD §3 step 5 manda; consumidor lo ve vía `metadata.llm_degraded` |
+| 2026-06-03 | Phase 3: stacked `@limiter.limit("60/minute") + @limiter.limit("10000/day")` on /search with `Response` param for slowapi header injection | slowapi 0.1.9 requires a starlette `Response` parameter to inject `X-RateLimit-*` + `Retry-After` headers; pydantic return models break header injection without it |
+| 2026-06-03 | Phase 3: WRN-04 invariant — Sentry log event name DERIVED from SDK state, pinned by parametrised lifespan test | Prevents log/SDK divergence (`sentry_init_done` emitted while client inactive) silently regressing observability |
+| 2026-06-03 | Phase 3: ChallengeBackoff via aiosqlite WAL + INSERT OR IGNORE seed; bind-mount `./data/cache.db:/app/cache.db` survives `compose up --force-recreate` | State must survive container recreation; idempotent seed + bind-mount verified empirically (UAT test 8) |
+| 2026-06-03 | Phase 3: /metrics mounted as ASGI sub-app via `make_asgi_app()` BEFORE CorrelationIdMiddleware, unauthenticated by design (D-10) | Prometheus scrapers cannot send X-API-Key; `test_metrics_endpoint_unprotected_by_design` pins the design choice |
 
 ## Active TODOs
 
-- _none — project just initialized_
+- _none active_ — Phase 3 closed with 0 outstanding issues (10/10 UAT pass, 21/21 threats SECURED). Phase 4 marked `deferred` in ROADMAP pending prod telemetry trigger.
 
 ## Known Risks (from research SUMMARY.md §8)
 
@@ -80,15 +84,13 @@ _(none yet — quick tasks track ad-hoc fixes outside the phase structure)_
 
 ## Session Continuity
 
-- **Last session:** 2026-06-03T17:41:14.053Z
-- **Stopped at:** Phase 3 context gathered
-- **Resume command:** `/gsd-plan-phase 1`
+- **Last session:** 2026-06-03T22:57:07Z
+- **Stopped at:** Phase 3 complete (2/2 plans, 10/10 UAT pass, SECURED 21/21 threats) — ready to discuss Phase 4
+- **Resume command:** `/gsd-discuss-phase 4`
 - **Files to load next session:**
-  - `.planning/ROADMAP.md` (Phase 1 goal + 3 plans + acceptance criteria)
-  - `.planning/REQUIREMENTS.md` (Traceability table, Phase 1 row)
-  - `.planning/research/SUMMARY.md` (12 open Phase-0-spike questions + 13 deviations + foot-guns)
+  - `.planning/ROADMAP.md` (Phase 4 goal — Production Operations, currently `deferred`)
   - `.planning/PROJECT.md` (Active requirements + Key Decisions)
-  - `PRD.md` (canonical spec, sections 3+7+10)
+  - `.planning/phases/03-robustness/03-VERIFICATION.md` + `03-SECURITY.md` (Phase 3 closure evidence)
 
 ## Evolution
 
