@@ -27,21 +27,36 @@ evidence: |
 
 ### 2. SC-1 + SC-4 — POST /search "pelota playera quico" + cache hit on repeat
 expected: First call returns ≥10 results in <30s, ≥6 with price non-null, zero blogs/wiki/youtube in top 10, metadata.cache_hit=false. Second identical call returns metadata.cache_hit=true in <500ms.
-result: PARTIAL (SC-1 first-call ≥10 results PASS, ≥6 prices = 5/6 in degraded mode; SC-4 cache PASS)
+result: PASS (verified 2026-06-03 via `pytest tests/test_e2e.py -m e2e`; 2/2 in 46s)
 evidence: |
-  - First call: pipeline returned in ~10s, ≥10 results, 5 with price (1 short of ≥6 threshold)
-  - test_serp_pelota assertion `with_price >= 6` failed at 5/6
-  - test_cache_hit assertion: PASS (9ms cache hit, < 500ms threshold) — verified post-fix
-  - Cache write skip-empty fix (0af57a7) prevents the 24h-poisoned-cache failure mode
-caveat: |
-  The 5/6 prices threshold assumes a working LLM curator with `response_format=json_object` support.
-  The dev-box's loaded model (llama3.2:3b-instruct-q4_K_M) does NOT support json_mode — it returns
-  400 model_capability_mismatch for every curator call. Degraded-mode fallback kicks in (post-fix in 0af57a7)
-  and the parser's price_in_card extraction provides the 5 prices. To hit ≥6 reliably, load a
-  json_mode-capable model in Ollama: `ollama pull qwen2.5:7b-instruct-q4_K_M` then point LLM_MODEL
-  at the router-exposed alias (qwen2.5-7b-instruct-q4km per /v1/models). The router's /v1/models
-  endpoint confirms qwen2.5 is registered but its Ollama backend was econnrefused during this UAT —
-  not loaded.
+  - test_serp_pelota PASS — ≥10 results, ≥6 with price (got 9), zero blogs/wiki/youtube in top 10
+  - test_cache_hit PASS — 9ms cache hit (well under 500ms)
+  - Live response: 15 results, 9 with price, 13 with store_hint, 3 with stock indicator,
+    3 with free_shipping, 2 with installments
+  - Pipeline ran in ~10s for the cold path (Google fetch dominant)
+followup_commits: ["0af57a7", "160c133"]
+followup_summary: |
+  Hit two underlying defects during operator-run UAT, both resolved before SC-1 could pass:
+
+  1. **LLM router routing (commit 0af57a7)** — The originally-prescribed alias
+     `qwen2.5-7b-instruct-q4km` mapped to a backend `llamacpp` container that
+     doesn't exist in the local-llms stack (ENOTFOUND). The local-llms maintainer
+     subsequently shipped Wave 2 of the router with a `recommendations` map in
+     `/v1/models`. Artiscrapper now reads `recommendations.chat-json-strict-default`
+     at boot (cached) — currently resolves to `chat-local` which routes to
+     `qwen2.5:7b-instruct-q4_K_M` in Ollama. Future-proof against alias rename.
+
+  2. **Parser dropping carousel + commercial signals (commit 160c133)** — The
+     `div.Ez5pwe` carousel extractor required `<a href>` inside each card, but
+     Google wraps carousel clicks in JS handlers (data-iid encoded in inline
+     <script>) so it always returned None. Price selectors (`.price`, `.precio`)
+     never matched Google's obfuscated rotating classes. 176 carousel items
+     across 10 fixtures were silently lost; 0 prices were ever extracted by the
+     parser itself (everything came from LLM snippet inference). Refactor to
+     regex-based extraction over `node.text()` for price/installments/stock/
+     free_shipping/rating/store_hint, plus a synthetic Google-search URL fallback
+     for carousel items. Empirical lift: 0 → 214 candidates-with-price across
+     the fixture set (3× total candidate count: 80 → 248).
 
 ### 3. SC-3 — GET /health <50ms on live service
 expected: `{status:"ok",cloak:"ok",llm:"ok",cache:"ok"}` returned in <50ms (measured via `curl -w '%{time_total}\n' -o /dev/null -s http://localhost:8000/health`)
