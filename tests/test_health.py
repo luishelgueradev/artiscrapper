@@ -19,10 +19,24 @@ _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp_db.close()
 os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-health")
 os.environ["CACHE_DB_PATH"] = _tmp_db.name
+# CR-03: /health/deep is now gated behind verify_api_key. Merge our test key
+# into any existing API_KEYS (cross-test contract — see test_auth.py).
+_hl_existing_keys = os.environ.get("API_KEYS", "").strip()
+_hl_existing_set = {k.strip() for k in _hl_existing_keys.split(",") if k.strip()}
+_hl_merged = _hl_existing_set | {"test-key-health"}
+os.environ["API_KEYS"] = ",".join(sorted(_hl_merged))
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from src.artiscrapper import auth as _auth_module  # noqa: E402
 from src.artiscrapper.main import app  # noqa: E402
+
+# CR-03: refresh the auth module's API_KEYS set (captured at first import) so
+# 'test-key-health' is honored even if a sibling test file imported first.
+_hl_live_keys = os.environ.get("API_KEYS", "")
+_auth_module.API_KEYS = {
+    k.strip() for k in _hl_live_keys.split(",") if k.strip()
+}
 
 
 def _make_mock_browser() -> MagicMock:
@@ -81,7 +95,10 @@ def test_health_deep_shape(test_client):
     llm_url = os.environ.get("LLM_ROUTER_URL", "http://127.0.0.1:3210")
     respx.get(f"{llm_url}/healthz").mock(return_value=httpx.Response(200))
 
-    resp = test_client.get("/health/deep")
+    # CR-03: /health/deep requires X-API-Key (same auth dependency as /search).
+    resp = test_client.get(
+        "/health/deep", headers={"X-API-Key": "test-key-health"}
+    )
     assert resp.status_code == 200
     body = resp.json()
     for key in ("status", "cloak", "llm", "cache"):

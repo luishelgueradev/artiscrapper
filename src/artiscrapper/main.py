@@ -270,10 +270,21 @@ async def health(request: Request) -> dict:
 
 
 @app.get("/health/deep")
-async def health_deep(request: Request) -> dict:
+async def health_deep(
+    request: Request,
+    _api_key: str = Depends(verify_api_key),
+) -> dict:
     """
     OBS-02: Real roundtrip. NEVER call from load balancer (eats Chromium nav).
     Use only from cron / manual smoke test.
+
+    CR-03: gated behind X-API-Key. Without this, any unauthenticated caller
+    could trigger (a) a real Chromium new_context/new_page/goto round-trip
+    per request (burning browser slots and the GoogleRateLimiter), and
+    (b) an outbound GET to LLM_ROUTER_URL carrying LLM_ROUTER_BEARER_TOKEN
+    — a free DoS knob plus bearer-token exfiltration trigger via SSRF or
+    direct port exposure. The cheap unauth /health endpoint above is what
+    the LB should hit.
     """
     out = await health(request)
     # Cloak deep: navigate about:blank and evaluate
