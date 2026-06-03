@@ -199,6 +199,12 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(_recycle_browser_loop(app), name="browser_recycle"),
         asyncio.create_task(prune_loop(app.state.cache), name="cache_prune"),
     ]
+
+    # WR-03: strong-reference set for fire-and-forget tasks (e.g. the
+    # cache-write task created from /search). asyncio.create_task only
+    # registers a weak reference, so without retaining the task here
+    # Python is free to GC it mid-execution and silently drop the work.
+    app.state.background_tasks = set()
     log.info("boot_done")
     try:
         yield
@@ -645,7 +651,12 @@ async def search(
             except Exception as exc:
                 log.warning("cache_write_failed", error=str(type(exc).__name__))
 
-        asyncio.create_task(_write_cache())
+        # WR-03: retain a strong reference to the task so Python doesn't
+        # garbage-collect it mid-flight (asyncio.create_task keeps only a
+        # weak ref). The done_callback removes it once the task finishes.
+        _cache_task = asyncio.create_task(_write_cache())
+        request.app.state.background_tasks.add(_cache_task)
+        _cache_task.add_done_callback(request.app.state.background_tasks.discard)
 
         return SearchResponse(
             query=body.query,
