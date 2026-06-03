@@ -19,6 +19,9 @@ dependencies = [
     "tldextract==5.3.1",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    "prometheus-client==0.25.0",
+    "sentry-sdk==2.61.1",
+    "slowapi==0.1.9",
 ]
 
 [dependency-groups]
@@ -36,7 +39,10 @@ packages = ["src/artiscrapper"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-markers = ["e2e: live network tests (skipped by default)"]
+markers = [
+    "e2e: live network tests (skipped by default)",
+    "integration: fixture-replay integration tests (run by default; selectable via -m integration)",
+]
 testpaths = ["tests"]
 pythonpath = ["."]
 
