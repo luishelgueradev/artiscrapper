@@ -19,6 +19,8 @@ Reference analogs (03-PATTERNS.md §"src/artiscrapper/auth.py"):
   llm.py::_RESOLVED_MODEL + config.py::settings).
 """
 
+import hmac
+
 import structlog
 from fastapi import HTTPException, Request, status
 
@@ -53,20 +55,28 @@ def verify_api_key(request: Request) -> str:
     key. Returns the key string on success so callers can audit-log the
     consumer identity (but OBS-05 forbids logging the value itself).
     """
-    key = request.headers.get("X-API-Key")
+    # WR-08: strip the header so whitespace-only is treated as missing, mirroring
+    # _parse_api_keys() which drops whitespace-only tokens from API_KEYS.
+    key = (request.headers.get("X-API-Key") or "").strip()
     if not key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing X-API-Key header",
             headers={"WWW-Authenticate": "ApiKey"},
         )
-    if key not in API_KEYS:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
-    return key
+    # CR-01: constant-time comparison against every configured key. `key in
+    # API_KEYS` falls back to non-constant-time str.__eq__ once the hash
+    # bucket matches, leaking per-byte equality timing. Iterating the full
+    # set on every call is fine — the set is tiny (1-2 keys for the
+    # Sánchez Repuestos deploy) so the cost is negligible.
+    for valid in API_KEYS:
+        if hmac.compare_digest(key, valid):
+            return key
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid API key",
+        headers={"WWW-Authenticate": "ApiKey"},
+    )
 
 
 def get_api_key(request: Request) -> str:
