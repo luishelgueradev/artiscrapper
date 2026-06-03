@@ -17,7 +17,7 @@ import structlog
 from pydantic import BaseModel, Field, ValidationError
 
 from .config import settings
-from .metrics import metrics
+from .metrics import inc_llm_fallback, metrics  # noqa: F401  (metrics kept for backwards-compat readers)
 
 log = structlog.get_logger()
 
@@ -193,7 +193,7 @@ async def classify_candidate(
             raw = resp.json()["choices"][0]["message"]["content"]
             return LLMVerdict.model_validate_json(raw)
         except httpx.TimeoutException:
-            metrics.llm_fallback_total["timeout"] += 1  # OBS-06
+            inc_llm_fallback("timeout")  # D-11 bridge → dataclass + prometheus
             return LLMVerdict.fallback("timeout")
         except httpx.HTTPStatusError as e:
             code = e.response.status_code
@@ -211,7 +211,7 @@ async def classify_candidate(
                     raw2 = resp2.json()["choices"][0]["message"]["content"]
                     return LLMVerdict.model_validate_json(raw2)
                 except Exception:
-                    metrics.llm_fallback_total["overload"] += 1  # OBS-06
+                    inc_llm_fallback("overload")  # D-11 bridge
                     return LLMVerdict.fallback("overload")
             if code in (502, 504):
                 # Upstream cold-load: router adapter timed out before Ollama finished
@@ -229,15 +229,15 @@ async def classify_candidate(
                     raw2 = resp2.json()["choices"][0]["message"]["content"]
                     return LLMVerdict.model_validate_json(raw2)
                 except Exception:
-                    metrics.llm_fallback_total[f"cold_load_{code}"] += 1  # OBS-06
+                    inc_llm_fallback(f"cold_load_{code}")  # D-11 bridge
                     return LLMVerdict.fallback(f"cold_load_{code}")
-            metrics.llm_fallback_total[f"http_{code}"] += 1  # OBS-06
+            inc_llm_fallback(f"http_{code}")  # D-11 bridge
             return LLMVerdict.fallback(f"http_{code}")
         except (json.JSONDecodeError, ValidationError, KeyError):
-            metrics.llm_fallback_total["malformed"] += 1  # OBS-06
+            inc_llm_fallback("malformed")  # D-11 bridge
             return LLMVerdict.fallback("malformed")
         except Exception:
-            metrics.llm_fallback_total["conn_error"] += 1  # OBS-06
+            inc_llm_fallback("conn_error")  # D-11 bridge
             return LLMVerdict.fallback("conn_error")
 
 

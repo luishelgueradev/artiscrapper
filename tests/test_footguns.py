@@ -4,10 +4,19 @@ Pattern 10 from 02-RESEARCH.md (lines 1205-1224).
 LIFECYCLE NOTE: This file will be EXTENDED in plan 02-03 Task 2 with implementation bodies
 for test_recycle_triggers. Wave-1 stubs remain importable/skippable until 02-03 fills them.
 Do NOT add sentinel comments that would break additive edits.
+
+Phase 3 extensions:
+  - test_sentry_does_not_pull_uvloop: re-asserts D-6 against sentry-sdk's
+    transitive dep tree (03-RESEARCH.md §G3).
+  - test_metrics_endpoint_unprotected_by_design: pins D-10 — /metrics must
+    be mounted via prometheus_client.make_asgi_app() (an ASGI sub-app that
+    bypasses FastAPI middleware + slowapi), NOT a regular FastAPI route.
 """
 
 import subprocess
 import sys
+
+import pytest
 
 
 def test_no_uvloop_installed():
@@ -90,4 +99,50 @@ def test_recycle_triggers():
     assert result.returncode == 0, (
         "BROWSER-03: recycle condition 'browser_uses >= settings.BROWSER_RECYCLE_AFTER' "
         "must be present in main.py"
+    )
+
+
+# ──────────────────────────────────────────
+# Phase 3 invariants
+# ──────────────────────────────────────────
+
+
+def test_sentry_does_not_pull_uvloop():
+    """
+    D-6 + Phase 3: sentry-sdk must NOT pull uvloop into uv.lock transitively
+    (03-RESEARCH.md §G3). This is an extra pin alongside the existing
+    `test_uvloop_absent_from_lock` so a future sentry-sdk minor bump that
+    starts depending on uvloop trips a clearly-labelled test.
+    """
+    result = subprocess.run(
+        ["grep", "-rE", "uvloop", "uv.lock"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0, (
+        f"D-6 / Phase 3: uvloop appeared in uv.lock — check sentry-sdk transitive deps:\n"
+        f"{result.stdout}"
+    )
+
+
+@pytest.mark.xfail(
+    strict=False,
+    reason="main.py wiring lands in Task 3 — make_asgi_app() not present yet",
+)
+def test_metrics_endpoint_unprotected_by_design():
+    """
+    D-10: /metrics must be mounted via prometheus_client.make_asgi_app() so
+    it bypasses FastAPI middleware (CorrelationIdMiddleware + slowapi). If a
+    future refactor moves /metrics to a regular FastAPI route, the slowapi
+    + auth dependencies would silently wrap it — breaking the D-10 contract.
+    """
+    result = subprocess.run(
+        ["grep", "-n", "/metrics", "src/artiscrapper/main.py"],
+        capture_output=True,
+        text=True,
+    )
+    assert "make_asgi_app()" in result.stdout, (
+        "D-10: /metrics must be mounted via prometheus_client.make_asgi_app() "
+        "(ASGI sub-app), NOT a FastAPI route — otherwise CorrelationIdMiddleware "
+        "+ slowapi will wrap it. main.py grep output:\n" + result.stdout
     )
