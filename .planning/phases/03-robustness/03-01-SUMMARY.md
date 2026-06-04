@@ -59,7 +59,7 @@ patterns-established:
   - "D-11 dual-write bridge: inc_<event>(reason) increments BOTH legacy Metrics dataclass AND prometheus Counter — no rename, no replacement, Phase 2 readers unaffected"
   - "Coordination notes contract for shared main.py: Plan 03-02 inserts `challenge_backoff_init` BETWEEN rate_limit_init and boot_done; `check_gate()` inside the `with search_elapsed.time()` block, AFTER cache-hit early-return"
 
-requirements-completed: [OBS-07]
+requirements_completed: [OBS-07]
 
 # Metrics
 duration: ~30 min
