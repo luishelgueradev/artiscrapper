@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.1
-milestone_name: milestone
+milestone_name: "milestone"
 status: ready_to_plan
-stopped_at: Phase 3 complete (2/2) — ready to discuss Phase 4
-last_updated: 2026-06-03T22:57:07.423Z
+stopped_at: Phase 3 complete (2/2 plans, 10/10 UAT pass, SECURED 21/21 threats) — ready to discuss Phase 4
+last_updated: "2026-06-03T23:40:45.878Z"
 progress:
   total_phases: 5
   completed_phases: 3
@@ -21,21 +21,22 @@ progress:
 
 ## Current Position
 
-Phase: 4
+Phase: 3.1
 Plan: Not started
 
-- **Active phase:** _none_ (Phase 3 complete — ready to discuss Phase 4)
-- **Phases completed:** 3/5
+- **Active phase:** 3.1 (INSERTED — v0.1 close hygiene; 0 plans yet)
+- **Phases completed:** 3/5 (1, 2, 3 — Phase 3.1 inserted post-execution)
 - **Plans completed:** 8/8 milestone-to-date (3+3+2)
 - **Quick tasks completed:** 0
-- **Next command:** `/gsd-discuss-phase 4` to start Phase 4 (Production Operations)
+- **Next command:** `/gsd-plan-phase 3.1` to break down v0.1 closure hygiene work
 
 ```
-Phase 1 — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
-Phase 2 — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
-Phase 3 — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
-Phase 4 — Production Operations               [ ] deferred      (on demand from prod telemetry)
-Phase 5 — Expansion                           [ ] deferred      (on growth trigger)
+Phase 1   — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
+Phase 2   — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
+Phase 3   — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
+Phase 3.1 — v0.1 close hygiene (INSERTED)       [ ] not planned   (0 plans yet — runs before milestone close)
+Phase 4   — Production Operations               [ ] deferred      (on demand from prod telemetry)
+Phase 5   — Expansion                           [ ] deferred      (on growth trigger)
 ```
 
 ## Recent Decisions
@@ -84,13 +85,16 @@ _(none yet — quick tasks track ad-hoc fixes outside the phase structure)_
 
 ## Session Continuity
 
-- **Last session:** 2026-06-03T22:57:07Z
-- **Stopped at:** Phase 3 complete (2/2 plans, 10/10 UAT pass, SECURED 21/21 threats) — ready to discuss Phase 4
-- **Resume command:** `/gsd-discuss-phase 4`
+- **Last session:** 2026-06-03T23:40:45Z
+- **Stopped at:** v0.1 audit complete (status=tech_debt, 53/53 reqs satisfied, 7 debt items) → Phase 3.1 inserted post-execution to close hygiene before milestone
+- **Resume command:** `/gsd-plan-phase 3.1`
 - **Files to load next session:**
-  - `.planning/ROADMAP.md` (Phase 4 goal — Production Operations, currently `deferred`)
+  - `.planning/v0.1-MILESTONE-AUDIT.md` (7 tech-debt items that drive Phase 3.1 plans)
+  - `.planning/ROADMAP.md` §Phase 3.1 entry (line 128)
   - `.planning/PROJECT.md` (Active requirements + Key Decisions)
-  - `.planning/phases/03-robustness/03-VERIFICATION.md` + `03-SECURITY.md` (Phase 3 closure evidence)
+  - `.planning/REQUIREMENTS.md` (traceability table — 52 reqs need Status flip from "Pending" to "Complete")
+  - `.planning/phases/02-mvp/02-VERIFICATION.md` + `02-mvp/02-0*-SUMMARY.md` (frontmatter `requirements_completed: []` needs population)
+  - `.planning/phases/03-robustness/03-VERIFICATION.md` (Phase 3 closure evidence — Phase 3.1 work builds on top)
 
 ## Evolution
 
@@ -99,3 +103,9 @@ This document evolves at every plan/phase boundary:
 - **After each plan**: update "Current Position" + "Recent Decisions" + plan counts.
 - **After each phase transition** (`/gsd-transition`): update progress bar + active TODOs + blockers; promote insights to PROJECT.md if they change architecture.
 - **After each milestone** (`/gsd-complete-milestone`): full audit; reset Active TODOs; archive Recent Decisions older than the milestone.
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 3.1 inserted after Phase 3: v0.1 close hygiene: traceability + frontmatter + test_e2e auth + degraded TestClient + slowapi drift + nyquist accept (URGENT)

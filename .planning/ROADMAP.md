@@ -125,6 +125,16 @@ Plans:
 
 **Duration**: 1 week (matches PRD §7 Fase 2 estimate)
 
+### Phase 03.1: v0.1 close hygiene: REQUIREMENTS.md traceability flip + SUMMARY frontmatter population + tests/test_e2e.py X-API-Key header + degraded-mode TestClient coverage + slowapi rate-limit settings-source-of-truth + Nyquist wave-0 accept/complete for phases 1-3 (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 3
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 03.1 to break down)
+
 ### Phase 4: Production Operations
 
 **Goal**: On-demand production tooling — Grafana dashboards backed by the Phase 3 Prometheus metrics, Loki log aggregation, cache invalidation endpoint, and OpenTelemetry tracing if latency investigation demands it. **Scope is gated by actual prod telemetry**, not pre-emptive build.
