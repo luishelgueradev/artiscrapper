@@ -44,7 +44,11 @@ from .config import settings
 from .freshness import assess_freshness
 from .llm import curate_candidates, router_health_check
 from .logging_setup import configure_logging
-from .metrics import inc_block_detected, metrics, search_elapsed  # noqa: F401  (metrics kept for backwards-compat readers)
+from .metrics import (  # noqa: F401  (metrics kept for backwards-compat readers)
+    inc_block_detected,
+    metrics,
+    search_elapsed,
+)
 from .models import Candidate, Metadata, SearchRequest, SearchResponse
 from .rate_limit import GoogleRateLimiter
 from .search import build_serp_url, dedupe, is_junk, parse_serp, rerank

@@ -163,6 +163,5 @@ def test_metrics_endpoint_unprotected_by_design():
     assert "make_asgi_app()" in result.stdout, (
         "D-10: /metrics must be mounted via prometheus_client.make_asgi_app() "
         "(ASGI sub-app), NOT a FastAPI route — otherwise slowapi + "
-        "verify_api_key would silently wrap it. main.py grep output:\n"
-        + result.stdout
+        "verify_api_key would silently wrap it. main.py grep output:\n" + result.stdout
     )

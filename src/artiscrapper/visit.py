@@ -19,7 +19,11 @@ import structlog
 import tldextract
 from selectolax.parser import HTMLParser
 
-from .metrics import inc_visit_failed, metrics, visit_elapsed  # noqa: F401  (metrics kept for backwards-compat readers)
+from .metrics import (  # noqa: F401  (metrics kept for backwards-compat readers)
+    inc_visit_failed,
+    metrics,
+    visit_elapsed,
+)
 
 log = structlog.get_logger()
 
@@ -38,16 +42,18 @@ PER_HOST_CAP = 2
 # path). They intentionally serve different purposes: freshness wants
 # HOSTS (subdomain-specific), the visit guard wants REGISTERED_DOMAIN
 # (suffix-aware). Don't merge them.
-_MELI_REGISTERED_DOMAINS = frozenset({
-    "mercadolibre.com.ar",
-    "mercadolibre.com",
-    "mercadolibre.com.mx",
-    "mercadolibre.cl",
-    "mercadolibre.com.uy",
-    "mercadolibre.com.br",
-    "mercadolibre.com.co",
-    "mercadolibre.com.pe",
-})
+_MELI_REGISTERED_DOMAINS = frozenset(
+    {
+        "mercadolibre.com.ar",
+        "mercadolibre.com",
+        "mercadolibre.com.mx",
+        "mercadolibre.cl",
+        "mercadolibre.com.uy",
+        "mercadolibre.com.br",
+        "mercadolibre.com.co",
+        "mercadolibre.com.pe",
+    }
+)
 
 # D11: Chromium-146 headers — Sec-Fetch-Site: cross-site + Referer: https://www.google.com/
 DEFAULT_HEADERS = {

@@ -48,9 +48,7 @@ from src.artiscrapper.main import app  # noqa: E402
 # CR-03: refresh the auth module's API_KEYS set (captured at first import) so
 # 'test-key-health' is honored even if a sibling test file imported first.
 _hl_live_keys = os.environ.get("API_KEYS", "")
-_auth_module.API_KEYS = {
-    k.strip() for k in _hl_live_keys.split(",") if k.strip()
-}
+_auth_module.API_KEYS = {k.strip() for k in _hl_live_keys.split(",") if k.strip()}
 
 
 def _make_mock_browser() -> MagicMock:
@@ -110,9 +108,7 @@ def test_health_deep_shape(test_client):
     respx.get(f"{llm_url}/healthz").mock(return_value=httpx.Response(200))
 
     # CR-03: /health/deep requires X-API-Key (same auth dependency as /search).
-    resp = test_client.get(
-        "/health/deep", headers={"X-API-Key": "test-key-health"}
-    )
+    resp = test_client.get("/health/deep", headers={"X-API-Key": "test-key-health"})
     assert resp.status_code == 200
     body = resp.json()
     for key in ("status", "cloak", "llm", "cache"):

@@ -49,16 +49,12 @@ os.environ.setdefault("CACHE_DB_PATH", _tmp_db.name)
 _existing_keys = os.environ.get("API_KEYS", "").strip()
 _our_key = "test-key-dm"
 if _our_key not in _existing_keys.split(","):
-    os.environ["API_KEYS"] = (
-        f"{_existing_keys},{_our_key}" if _existing_keys else _our_key
-    )
+    os.environ["API_KEYS"] = f"{_existing_keys},{_our_key}" if _existing_keys else _our_key
 os.environ.setdefault("SENTRY_DSN", "")
 
 from src.artiscrapper.llm import router_health_check  # noqa: E402
 
-LABELLED = (
-    pathlib.Path(__file__).parent.parent / "fixtures" / "llm" / "labelled.jsonl"
-)
+LABELLED = pathlib.Path(__file__).parent.parent / "fixtures" / "llm" / "labelled.jsonl"
 
 
 def _heuristic_only_survivors(candidates: list[dict]) -> list[dict]:
@@ -69,9 +65,7 @@ def _heuristic_only_survivors(candidates: list[dict]) -> list[dict]:
     falls back to the full candidate set.
     """
     survivors = [
-        c
-        for c in candidates
-        if c.get("price_in_card") or c.get("price") or c.get("has_price")
+        c for c in candidates if c.get("price_in_card") or c.get("price") or c.get("has_price")
     ]
     if not survivors:
         survivors = list(candidates)
@@ -111,9 +105,7 @@ async def test_llm_down_keeps_useful_results():
         )
 
         # Confirm the trigger: router_health_check must return False.
-        healthy = await router_health_check(
-            "http://127.0.0.1:3210", "test-bearer-degraded-mode"
-        )
+        healthy = await router_health_check("http://127.0.0.1:3210", "test-bearer-degraded-mode")
         assert healthy is False, (
             "LLM-06 trigger: router_health_check must return False when /healthz returns 503"
         )
@@ -148,10 +140,7 @@ _auth_module.API_KEYS = {k.strip() for k in _live_keys_dm.split(",") if k.strip(
 
 
 SERP_FIXTURE = (
-    pathlib.Path(__file__).parent.parent
-    / "fixtures"
-    / "serp"
-    / "01-pelota_playera_quico.html"
+    pathlib.Path(__file__).parent.parent / "fixtures" / "serp" / "01-pelota_playera_quico.html"
 )
 
 
@@ -230,9 +219,7 @@ def test_degraded_mode_via_search_endpoint(monkeypatch):
 
     monkeypatch.setattr("src.artiscrapper.main.launch_async", _fake_launch_async)
     monkeypatch.setattr("src.artiscrapper.main.fetch_serp", _fake_fetch_serp)
-    monkeypatch.setattr(
-        "src.artiscrapper.main.router_health_check", _fake_router_health
-    )
+    monkeypatch.setattr("src.artiscrapper.main.router_health_check", _fake_router_health)
 
     # Reset challenge_backoff state so a sibling test's block-state
     # doesn't deny our request. Two-level reset required:
@@ -282,10 +269,10 @@ def test_degraded_mode_via_search_endpoint(monkeypatch):
 
     results = data.get("results", [])
     assert len(results) > 0, (
-        f"LLM-06: heuristic-only path must retain ≥1 survivor from "
-        f"the real SERP fixture (01-pelota_playera_quico.html — known "
-        f"to yield ≥15 carousel candidates); got 0. Check "
-        f"main.py degraded-mode branch."
+        "LLM-06: heuristic-only path must retain ≥1 survivor from "
+        "the real SERP fixture (01-pelota_playera_quico.html — known "
+        "to yield ≥15 carousel candidates); got 0. Check "
+        "main.py degraded-mode branch."
     )
     # D-18 alignment: assertion message lists the specific count not just `> 0`.
     # The fixture historically yields ≥15 carousel + heuristic-pass candidates.
