@@ -127,13 +127,15 @@ Plans:
 
 ### Phase 03.1: v0.1 close hygiene: REQUIREMENTS.md traceability flip + SUMMARY frontmatter population + tests/test_e2e.py X-API-Key header + degraded-mode TestClient coverage + slowapi rate-limit settings-source-of-truth + Nyquist wave-0 accept/complete for phases 1-3 (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Close v0.1 with surgical hygiene — flip 52 REQUIREMENTS.md rows Pending→Complete, populate `requirements_completed:` in 4 SUMMARY frontmatters, accept 3 VALIDATION.md files with per-phase Acceptance Rationale, add X-API-Key headers to e2e tests, append degraded-mode TestClient sibling covering the full /search route, land the permanent slowapi `default_limits` settings-source-of-truth refactor (with @limiter.exempt on health endpoints + invariant tests + empirical bump-and-recreate retest), and clean up 4 Phase 2 review WARNINGs (WR-01 tldextract MELI suffix, WR-02 verify-only, WR-03 tautology removal, WR-04 NamedTemporaryFile leak). Zero new v1 requirements — closes 7 audit items across 3 plans/3 waves.
+**Requirements**: None directly (hygiene phase). Closes traceability for 52 previously-satisfied v1 REQ-IDs.
 **Depends on:** Phase 3
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 03.1 to break down)
+- [ ] 03.1-01-PLAN.md — Wave 1 — Traceability bookkeeping: REQUIREMENTS.md 52-row flip (D-01) + 4 SUMMARY frontmatter requirements_completed lists (D-02) + 3 VALIDATION.md accept with per-phase Acceptance Rationale (D-07/D-08). Pure planning-artifact diff, zero source touch.
+- [ ] 03.1-02-PLAN.md — Wave 2 — Test additions + WR cleanup: X-API-Key headers in tests/test_e2e.py (D-03) + degraded-mode TestClient sibling using real SERP fixture (D-04) + tldextract MELI guard + regression test (WR-01) + WR-02 verify-only confirmation (no source diff per RESEARCH §5) + WR-03 tautology removal + WR-04 NamedTemporaryFile→mkdtemp+atexit. Runs parallel-eligible with 03.1-01 (zero file overlap).
+- [ ] 03.1-03-PLAN.md — Wave 3 — slowapi settings refactor (D-05) + R-01 mitigation + D-06 empirical retest: module-level `_RATE_LIMIT_PER_*` constants + `Limiter(default_limits=...)` + remove stacked decorators + `@limiter.exempt` on /health and /health/deep + updated rate_limit_init log with `source="default_limits"` provenance + test_health_never_rate_limited invariant + default_limits propagation test + D-06 bump-and-recreate empirical UAT (Claude runs as operator per `feedback_agent_as_uat_operator`). Depends on 03.1-02 so test infrastructure is stable underfoot.
 
 ### Phase 4: Production Operations
 
