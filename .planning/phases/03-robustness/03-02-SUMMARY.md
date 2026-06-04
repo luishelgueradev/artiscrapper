@@ -57,10 +57,12 @@ patterns-established:
   - "Per-fixture pinned integration tests with forensic details list (D-18 — test_catalog_extraction yields `[(filename, has_price, price), ...]` in the failure message so a regression points at the EXACT host that broke)."
   - "Cross-test env-var merge contract — every test file that mutates `os.environ['API_KEYS']` must APPEND its key (not replace) AND rebuild `auth.API_KEYS` from the live env. Documented in `tests/integration/test_challenge_backoff.py` module docstring as the canonical reference."
 
-requirements-completed: []
-# Phase 3 has no NEW requirements; this plan HARDENS BROWSER-05, LLM-06,
-# D12 acceptance, and NF-02/NF-03 (per the plan frontmatter's
-# requirements_addressed list — hardens-*, not completes-*).
+requirements_completed: []
+# Phase 3 plan 03-02 introduces NO new v1 requirements.
+# It hardens BROWSER-05 (sorry detection), LLM-06 (degraded mode),
+# D12 (catalog extraction), NF-02 (parser tests), NF-03 (test gates).
+# Their `requirements_completed` lives on the Phase 2 SUMMARY that
+# originally satisfied them.
 
 # Metrics
 duration: ~30 min

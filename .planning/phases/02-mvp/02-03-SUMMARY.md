@@ -43,6 +43,7 @@ key_files:
     - "tests/test_e2e.py"
     - "tests/test_footguns.py"
     - "pyproject.toml"
+requirements_completed: [DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04, DEPLOY-05, DEPLOY-06, OBS-01, OBS-02, OBS-03, OBS-04, OBS-05, OBS-06, NF-01, NF-02, NF-03, NF-04]
 decisions:
   - "Used monkeypatch on launch_async in test_health.py fixture to allow TestClient lifespan to run without real Chromium — cleaner than disabling lifespan entirely"
   - "Added [[tool.mypy.overrides]] ignore_errors=true for wave 1-2 modules (browser, search, cache, visit, llm, freshness, main) — these use cloakbrowser/selectolax types with no upstream stubs; full annotation deferred to Phase 3"

@@ -36,6 +36,7 @@ key_files:
     - "src/artiscrapper/main.py"
     - "tests/test_llm.py"
     - "tests/test_visit.py"
+requirements_completed: [LLM-01, LLM-02, LLM-03, LLM-04, LLM-05, LLM-06, LLM-07, LLM-08, VISIT-01, VISIT-02, VISIT-03, VISIT-04, VISIT-05, VISIT-06, VISIT-07, VISIT-08, FRESH-01, FRESH-02, FRESH-03, FRESH-04]
 decisions:
   - "AR_PRICE_PATTERN: extended Pattern 6 regex to three alternate groups (ARS/pesos/dollar-sign) because 'ARS NNN' without dollar sign is a valid format in AR e-commerce but the original raw-string r'\\$' compiles to end-of-string anchor in Python regex — confirmed by uv run pytest"
   - "extract_product: added _extract_price_from_offers() helper to handle AggregateOffer.lowPrice and WooCommerce priceSpecification — mayoristafrog_com_ar uses priceSpecification, autodo_com_ar uses AggregateOffer"

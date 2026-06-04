@@ -62,6 +62,7 @@ key_files:
     - "tests/test_health.py"
     - "tests/test_e2e.py"
   modified: []
+requirements_completed: [SEARCH-01, SEARCH-02, SEARCH-03, SEARCH-04, SEARCH-05, SEARCH-06, SEARCH-07, SEARCH-08, CACHE-01, CACHE-02, CACHE-03, CACHE-04, CACHE-05, BROWSER-01, BROWSER-02, BROWSER-03, BROWSER-04, BROWSER-05]
 decisions:
   - "Added pythonpath=['.'] to pytest config so tests can import src.artiscrapper.xxx directly"
   - "Used dependency-groups instead of project.optional-dependencies for uv dev deps"
