@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: "close hygiene: REQUIREMENTS.md traceability flip + SUMMARY frontmatter population + tests/test_e2e.py X-API-Key header + degraded-mode TestClient coverage + slowapi rate-limit settings-source-of-truth + Nyquist wave-0 accept/complete for phases 1-3"
 status: executing
-stopped_at: Phase 3.1 Plan 01 executed (Wave 1 — bookkeeping flip)
-last_updated: "2026-06-04T02:30:00.000Z"
+stopped_at: Phase 3.1 Plan 02 executed (Wave 2 — tests + WR cleanup)
+last_updated: "2026-06-04T03:00:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 65
+  total_plans: 10
+  completed_plans: 10
+  percent: 70
 ---
 
 # State: artiscrapper v0
@@ -22,19 +22,19 @@ progress:
 ## Current Position
 
 Phase: 3.1
-Plan: 01 complete (Wave 1 — bookkeeping flip); Plans 02 + 03 pending
+Plan: 02 complete (Wave 2 — tests + WR cleanup); Plan 03 pending
 
-- **Active phase:** 3.1 (v0.1 close hygiene; 1/3 plans done, 2 plans to go in waves 2-3)
+- **Active phase:** 3.1 (v0.1 close hygiene; 2/3 plans done, 1 plan to go in wave 3)
 - **Phases completed:** 3/5 (1, 2, 3 — Phase 3.1 still in progress)
-- **Plans completed:** 9 total (3+3+2+1; Plan 03.1-01 closed 2026-06-04)
+- **Plans completed:** 10 total (3+3+2+2; Plan 03.1-02 closed 2026-06-04)
 - **Quick tasks completed:** 0
-- **Next command:** `/gsd-execute-phase 3.1 --plan 02` to run Wave 2 (test additions + slowapi refactor)
+- **Next command:** `/gsd-execute-phase 3.1 --plan 03` to run Wave 3 (slowapi settings-source-of-truth refactor + D-06 empirical retest)
 
 ```
 Phase 1   — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
 Phase 2   — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
 Phase 3   — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
-Phase 3.1 — v0.1 close hygiene (INSERTED)       [~] in progress   (1/3 plans done: 01-bookkeeping; 02-tests-refactor + 03-WR pending)
+Phase 3.1 — v0.1 close hygiene (INSERTED)       [~] in progress   (2/3 plans done: 01-bookkeeping + 02-tests-WR; 03-slowapi-refactor pending)
 Phase 4   — Production Operations               [ ] deferred      (on demand from prod telemetry)
 Phase 5   — Expansion                           [ ] deferred      (on growth trigger)
 ```
@@ -57,6 +57,9 @@ Phase 5   — Expansion                           [ ] deferred      (on growth t
 | 2026-06-03 | Phase 3: WRN-04 invariant — Sentry log event name DERIVED from SDK state, pinned by parametrised lifespan test | Prevents log/SDK divergence (`sentry_init_done` emitted while client inactive) silently regressing observability |
 | 2026-06-03 | Phase 3: ChallengeBackoff via aiosqlite WAL + INSERT OR IGNORE seed; bind-mount `./data/cache.db:/app/cache.db` survives `compose up --force-recreate` | State must survive container recreation; idempotent seed + bind-mount verified empirically (UAT test 8) |
 | 2026-06-03 | Phase 3: /metrics mounted as ASGI sub-app via `make_asgi_app()` BEFORE CorrelationIdMiddleware, unauthenticated by design (D-10) | Prometheus scrapers cannot send X-API-Key; `test_metrics_endpoint_unprotected_by_design` pins the design choice |
+| 2026-06-04 | Phase 3.1 Plan 02: WR-01 MELI guard uses tldextract.registered_domain instead of `"mercadolibre." in netloc` substring (frozenset of 8 MELI registered domains) | Substring over-matched notmercadolibre.com / mercadoliberia.com; tldextract 5.3.1 already pinned + public-suffix-aware; no new dep |
+| 2026-06-04 | Phase 3.1 Plan 02: WR-02 verify-only (no source diff) — strong-ref pattern already in place at main.py:207 + 668-670 | Audit text referenced pre-Phase-3 line numbers; re-emitting a fix would produce no-op diff + falsely claim a fix (R-02 mitigation) |
+| 2026-06-04 | Phase 3.1 Plan 02: WR-04 uses tempfile.mkdtemp + atexit.register cleanup (NOT pytest tmp_path) for tests/test_health.py CACHE_DB_PATH | CACHE_DB_PATH must be set at module-import time before pydantic-settings reads env; tmp_path is function-scope and fires too late |
 
 ## Active TODOs
 
@@ -85,16 +88,15 @@ _(none yet — quick tasks track ad-hoc fixes outside the phase structure)_
 
 ## Session Continuity
 
-- **Last session:** 2026-06-04T02:30:00.000Z
-- **Stopped at:** Phase 3.1 Plan 01 executed (Wave 1 — REQUIREMENTS.md flip + 4 SUMMARY frontmatters + 3 VALIDATION.md accepts; 3 commits c601623, e82bd6c, d2fda2c)
-- **Resume command:** `/gsd-execute-phase 3.1 --plan 02`
+- **Last session:** 2026-06-04T03:00:00.000Z
+- **Stopped at:** Phase 3.1 Plan 02 executed (Wave 2 — D-03 X-API-Key in e2e + D-04 degraded-mode TestClient + WR-01 tldextract guard + WR-02 verify-only + WR-03 tautology fix + WR-04 mkdtemp+atexit; 7 commits bd9d176, f9f25fc, d527e4d, 626314c, aa9937e, e5390e5, 58be58d. Full quick suite 67 passed / 2 deselected.)
+- **Resume command:** `/gsd-execute-phase 3.1 --plan 03`
 - **Files to load next session:**
-  - `.planning/v0.1-MILESTONE-AUDIT.md` (7 tech-debt items that drive Phase 3.1 plans)
+  - `.planning/v0.1-MILESTONE-AUDIT.md` (tech_debt[4] = slowapi settings-source-of-truth refactor is what Plan 03 closes)
   - `.planning/ROADMAP.md` §Phase 3.1 entry (line 128)
-  - `.planning/PROJECT.md` (Active requirements + Key Decisions)
-  - `.planning/REQUIREMENTS.md` (traceability table — 52 reqs need Status flip from "Pending" to "Complete")
-  - `.planning/phases/02-mvp/02-VERIFICATION.md` + `02-mvp/02-0*-SUMMARY.md` (frontmatter `requirements_completed: []` needs population)
-  - `.planning/phases/03-robustness/03-VERIFICATION.md` (Phase 3 closure evidence — Phase 3.1 work builds on top)
+  - `.planning/phases/03.1-v0-1-close-hygiene-requirements-md-traceability-flip-summary/03.1-RESEARCH.md` §1 (slowapi default_limits pattern A — chosen recipe)
+  - `.planning/phases/03.1-v0-1-close-hygiene-requirements-md-traceability-flip-summary/03.1-03-PLAN.md` (Wave 3 plan)
+  - `src/artiscrapper/main.py` lines 240 + 354-362 (Limiter constructor + /search decorator stack — targets of the D-05 refactor)
 
 ## Evolution
 
