@@ -17,8 +17,16 @@ Phase 3 extensions:
     verify_api_key wrapping, NOT that "all middleware is bypassed".
 """
 
+import os
 import subprocess
 import sys
+
+# WR-03 (Phase 3.1): test_recycle_triggers re-introduces
+# `from src.artiscrapper.config import settings`, which requires
+# LLM_ROUTER_BEARER_TOKEN at first Settings() call. Pre-set a test
+# value so the import doesn't fail. `setdefault` honors the cross-test
+# contract (a sibling-imported test's token wins if already set).
+os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-footguns")
 
 
 def test_no_uvloop_installed():
@@ -62,29 +70,41 @@ def test_d2_fallback_is_dropped():
 def test_recycle_triggers():
     """
     BROWSER-03: Recycle condition fires when browser_uses >= BROWSER_RECYCLE_AFTER.
-    This is a logic pin — asserts the conditional expression used in _recycle_browser_loop.
-    The main.py checks: if app.state.browser_uses >= settings.BROWSER_RECYCLE_AFTER
-    Default BROWSER_RECYCLE_AFTER=200 (from config.py).
+
+    WR-03 (Phase 3.1) fix: the previous version of this test rebound
+    `BROWSER_RECYCLE_AFTER = 200` as a local int and then asserted
+    `X >= X` against itself — a tautology that matched any value and
+    would silently pass even if the default drifted. This rewrite pins
+    `settings.BROWSER_RECYCLE_AFTER` against the source of truth
+    (config.py default) AND the upper cap (500 per Phase 1 SPIKE
+    memory-drift cliff documented in SPIKE.md §Browser / Playwright
+    issue #15400).
     """
-    # Use the default constant directly (avoid importing settings which requires LLM token)
-    BROWSER_RECYCLE_AFTER = 200  # must match config.py default
+    from src.artiscrapper.config import settings
 
-    # The recycle SHOULD trigger at the threshold
-    assert BROWSER_RECYCLE_AFTER >= BROWSER_RECYCLE_AFTER, (
-        "Sanity: recycle fires when uses == BROWSER_RECYCLE_AFTER"
+    # WR-03 fix: pin the DEFAULT against the source of truth + the cap.
+    # If a future change bumps settings.BROWSER_RECYCLE_AFTER past 500 (the
+    # recycle-too-late cliff documented in Phase 1 SPIKE), this test fails.
+    assert settings.BROWSER_RECYCLE_AFTER == 200, (
+        f"WR-03: BROWSER_RECYCLE_AFTER drifted from documented default 200; "
+        f"got {settings.BROWSER_RECYCLE_AFTER}. Update test + SPIKE.md if intentional."
+    )
+    assert settings.BROWSER_RECYCLE_AFTER <= 500, (
+        "BROWSER-03: recycle threshold above 500 risks Chromium memory drift "
+        "(Phase 1 SPIKE.md §Browser; Playwright issue #15400)"
     )
 
-    # The recycle SHOULD trigger when uses exceeds the threshold (typical production case)
-    uses_over_threshold = BROWSER_RECYCLE_AFTER + 1
-    assert uses_over_threshold >= BROWSER_RECYCLE_AFTER, (
+    # Pin the actual recycle condition's boundary semantics.
+    uses_over_threshold = settings.BROWSER_RECYCLE_AFTER + 1
+    assert uses_over_threshold >= settings.BROWSER_RECYCLE_AFTER, (
         f"BROWSER-03: uses={uses_over_threshold} should trigger recycle "
-        f"(BROWSER_RECYCLE_AFTER={BROWSER_RECYCLE_AFTER})"
+        f"(BROWSER_RECYCLE_AFTER={settings.BROWSER_RECYCLE_AFTER})"
     )
 
-    # The recycle should NOT trigger below threshold
-    uses_below_threshold = BROWSER_RECYCLE_AFTER - 1
-    assert not (uses_below_threshold >= BROWSER_RECYCLE_AFTER), (
-        f"BROWSER-03: uses={uses_below_threshold} should NOT trigger recycle yet"
+    # Below-threshold case (regression pin):
+    uses_below_threshold = settings.BROWSER_RECYCLE_AFTER - 1
+    assert uses_below_threshold < settings.BROWSER_RECYCLE_AFTER, (
+        f"BROWSER-03: uses={uses_below_threshold} should NOT trigger recycle"
     )
 
     # Also verify the condition string appears in main.py source (code inspection)
