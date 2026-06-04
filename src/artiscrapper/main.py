@@ -51,7 +51,14 @@ from .metrics import (  # noqa: F401  (metrics kept for backwards-compat readers
 )
 from .models import Candidate, Metadata, SearchRequest, SearchResponse
 from .rate_limit import GoogleRateLimiter
-from .search import build_serp_url, dedupe, is_junk, parse_serp, rerank
+from .search import (
+    build_serp_url,
+    dedupe,
+    heuristic_pre_classify,
+    is_junk,
+    parse_serp,
+    rerank,
+)
 from .visit import visit_candidates
 
 log = structlog.get_logger()
@@ -569,42 +576,65 @@ async def search(
         candidates_total = len(all_candidates)
         log.info("parse_done", candidates_total=candidates_total)
 
-        # ── [6] LLM curator (or degraded mode) ──
+        # ── [6] Heuristic pre-classifier + LLM curator on ambiguous only ──
+        # Path B (perf-audit 2026-06-04): the heuristic resolves ~76% of typical
+        # candidates with precision 100% (price_in_card OR known_store). Only the
+        # 24% ambiguous reach the LLM. Cuts cold-path LLM phase from ~75s to ~5-8s
+        # and reduces local-llms-router load 4x with no precision loss (hybrid F1
+        # 0.92 vs LLM-only F1 0.90 against the Phase 1 labeled fixtures).
+        kept_pre, ambiguous = heuristic_pre_classify(all_candidates)
+        pre_dropped = candidates_total - len(kept_pre) - len(ambiguous)
+        log.info(
+            "heuristic_pre_classified",
+            n_total=candidates_total,
+            n_kept_high_conf=len(kept_pre),
+            n_ambiguous=len(ambiguous),
+            n_dropped_hard=pre_dropped,
+        )
+
         llm_degraded = False
-        llm_filtered_out = 0
+        llm_filtered_out = pre_dropped  # hard drops by the heuristic count too
 
         router_healthy = await router_health_check(
             settings.LLM_ROUTER_URL,
             settings.LLM_ROUTER_BEARER_TOKEN,
         )
 
-        if router_healthy and all_candidates:
-            survivors, llm_filtered_out, llm_degraded = await curate_candidates(
-                all_candidates,
+        if router_healthy and ambiguous:
+            kept_llm, dropped_llm, llm_degraded = await curate_candidates(
+                ambiguous,
                 settings.LLM_ROUTER_URL,
                 settings.LLM_ROUTER_BEARER_TOKEN,
                 concurrency=settings.LLM_CONCURRENCY,
             )
-            # LLM-06: if the curator dropped everything because the router systematically
-            # failed (e.g., model_capability_mismatch returns 400 for every call), fall back
-            # to the same heuristic-only mode the router-down branch uses. Without this,
-            # `llm_degraded=True` would surface in metadata but the response would be empty.
-            if llm_degraded and not survivors:
+            llm_filtered_out += dropped_llm
+
+            # LLM-06: if the curator dropped every ambiguous candidate because the
+            # router systematically failed (model_capability_mismatch returns 400
+            # for every call, etc.), fall back to has_price heuristic on the
+            # ambiguous set so the response isn't empty. The kept_pre survivors
+            # already carry the high-confidence signal so they always survive.
+            if llm_degraded and not kept_llm:
                 log.warning("llm_degraded_all_dropped_fallback_to_heuristic")
-                survivors = [c for c in all_candidates if c.get("has_price")]
-                if not survivors:
-                    survivors = all_candidates
-                llm_filtered_out = candidates_total - len(survivors)
+                kept_llm = [c for c in ambiguous if c.get("has_price")]
+                llm_filtered_out = candidates_total - len(kept_pre) - len(kept_llm)
+        elif not ambiguous:
+            # Nothing for the LLM to decide — heuristic alone covered everything.
+            kept_llm = []
         else:
-            # LLM-06: degraded mode — router down or no candidates
-            if not router_healthy:
-                llm_degraded = True
-                log.warning("llm_degraded_router_down")
-            # Heuristic-only filtering: keep candidates that have price_in_card
-            # or that weren't filtered by the junk-domain blocklist (already done above)
-            survivors = [c for c in all_candidates if c.get("has_price")]
-            if not survivors:
-                survivors = all_candidates  # fallback: keep all non-junk candidates
+            # Router down: degraded mode for the ambiguous set only.
+            llm_degraded = True
+            log.warning("llm_degraded_router_down")
+            kept_llm = [c for c in ambiguous if c.get("has_price")]
+            llm_filtered_out = candidates_total - len(kept_pre) - len(kept_llm)
+
+        survivors = kept_pre + kept_llm
+
+        # Last-ditch safety: if both buckets ended empty but we had any candidates
+        # at all, keep the high-confidence ones (heuristic side). If even those
+        # were empty, the request is honestly empty — don't pad the response.
+        if not survivors and all_candidates and kept_pre:
+            survivors = kept_pre
             llm_filtered_out = candidates_total - len(survivors)
 
         # ── [7] Visit pass ──
