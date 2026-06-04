@@ -1,0 +1,13 @@
+{
+  "n_sample": 10,
+  "total_seconds": 1.29,
+  "per_visit_avg_ms": 129.0,
+  "visited_count": 10,
+  "failed_count": 0,
+  "extracted_price_count": 1,
+  "extracted_freshness_count": 0,
+  "visit_success_rate": 1.0,
+  "price_extraction_rate": 0.1,
+  "estimated_for_15_candidates_s": 1.9,
+  "estimated_for_30_candidates_s": 3.9
+}

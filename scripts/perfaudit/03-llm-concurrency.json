@@ -1,0 +1,25 @@
+{
+  "n_candidates": 50,
+  "model": "chat-local",
+  "results_seconds": {
+    "sem_1": 50.98,
+    "sem_2": 34.42,
+    "sem_4": 34.76,
+    "sem_8": 31.06,
+    "sem_16": 16.35
+  },
+  "results_per_call_ms_avg": {
+    "sem_1": 1020.0,
+    "sem_2": 688.0,
+    "sem_4": 695.0,
+    "sem_8": 621.0,
+    "sem_16": 327.0
+  },
+  "speedup_vs_sem1": {
+    "sem_1": 1.0,
+    "sem_2": 1.48,
+    "sem_4": 1.47,
+    "sem_8": 1.64,
+    "sem_16": 3.12
+  }
+}

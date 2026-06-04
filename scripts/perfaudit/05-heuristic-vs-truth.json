@@ -1,0 +1,70 @@
+{
+  "n": 50,
+  "kept_count": 33,
+  "dropped_count": 17,
+  "true_positives": 33,
+  "false_positives": 0,
+  "true_negatives": 8,
+  "false_negatives": 9,
+  "precision": 1.0,
+  "recall": 0.7857,
+  "accuracy": 0.82,
+  "f1": 0.88,
+  "by_reason": {
+    "price_in_card": 28,
+    "ambiguous_no_price_no_known_store": 12,
+    "known_store:mercadolibre.com.ar": 5,
+    "document": 1,
+    "blog_title": 3,
+    "junk_domain": 1
+  },
+  "latency_ms": 0,
+  "false_negatives_detail": [
+    {
+      "id": "serp01-card02",
+      "title": "Pelota Quico Juego Chavo 61cm Playa Inflable Multicolor",
+      "reason": "ambiguous_no_price_no_known_store"
+    },
+    {
+      "id": "serp01-card06",
+      "title": "Bal\u00f3n Pelota Quico Juego Chavo 61cm Playa Piscina ...",
+      "reason": "ambiguous_no_price_no_known_store"
+    },
+    {
+      "id": "serp02-card05",
+      "title": "Filtros de aceite de reemplazo Ford Focus ST",
+      "reason": "ambiguous_no_price_no_known_store"
+    },
+    {
+      "id": "serp04-card03",
+      "title": "bosch_bujias_encendido.pdf",
+      "reason": "document"
+    },
+    {
+      "id": "serp04-card05",
+      "title": "Tabla de equivalencias de buj\u00edas BOSCH a NGK \u27a4 ...",
+      "reason": "blog_title"
+    },
+    {
+      "id": "serp05-card03",
+      "title": "\u00bfCada cu\u00e1nto debe cambiarse la correa de distribuci\u00f3n ...",
+      "reason": "blog_title"
+    },
+    {
+      "id": "serp05-card05",
+      "title": "FIAT CRONOS 1.3 tiene correa o cadena de distribuci\u00f3n \u27a4 ...",
+      "reason": "ambiguous_no_price_no_known_store"
+    },
+    {
+      "id": "serp05-card07",
+      "title": "CORREA POLY-V HUTCHINSON FIAT CRONOS 1.3",
+      "reason": "ambiguous_no_price_no_known_store"
+    },
+    {
+      "id": "serp07-card02",
+      "title": "Kit 2 Rotulas Thompson Volkswagen Gol Power Dir. ...",
+      "reason": "ambiguous_no_price_no_known_store"
+    }
+  ],
+  "false_positives_detail": []
+}
