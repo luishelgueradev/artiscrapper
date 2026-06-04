@@ -20,8 +20,11 @@ services:
       # D-01: comma-separated API keys; empty default ⇒ all requests get 401.
       # Set via .env or shell export before `docker compose up`.
       - API_KEYS=${API_KEYS:-}
-      # D-02: per-key quotas (informational — the slowapi decorators in
-      # main.py use string literals "60/minute" / "10000/day").
+      # D-02 / Phase 3.1 D-05: per-key quotas wired into the slowapi
+      # decorators on POST /search via module-level constants
+      # (_RATE_LIMIT_PER_MINUTE / _RATE_LIMIT_PER_DAY in main.py). Bumping
+      # these vars + `compose up --force-recreate` updates the runtime
+      # hot path AND the `rate_limit_init` log line by construction.
       - API_RATE_PER_MINUTE=${API_RATE_PER_MINUTE:-60}
       - API_RATE_PER_DAY=${API_RATE_PER_DAY:-10000}
       # D-14: empty default ⇒ Sentry SDK init is skipped. Set in production
