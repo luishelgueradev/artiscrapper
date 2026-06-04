@@ -149,61 +149,61 @@ Phase mapping per `.planning/ROADMAP.md`. **GSD Phase numbering:** 1 = Spike (PR
 
 | Requirement | Phase | Status |
 |---|---|---|
-| SEARCH-01 | Phase 2 (MVP) | Pending |
-| SEARCH-02 | Phase 2 (MVP) | Pending |
-| SEARCH-03 | Phase 2 (MVP) | Pending |
-| SEARCH-04 | Phase 2 (MVP) | Pending |
-| SEARCH-05 | Phase 2 (MVP) | Pending |
-| SEARCH-06 | Phase 2 (MVP) | Pending |
-| SEARCH-07 | Phase 2 (MVP) | Pending |
-| SEARCH-08 | Phase 2 (MVP) | Pending |
-| LLM-01 | Phase 2 (MVP) | Pending |
-| LLM-02 | Phase 2 (MVP) | Pending |
-| LLM-03 | Phase 2 (MVP) | Pending |
-| LLM-04 | Phase 2 (MVP) | Pending |
-| LLM-05 | Phase 2 (MVP) | Pending |
-| LLM-06 | Phase 2 (MVP) | Pending |
-| LLM-07 | Phase 2 (MVP) | Pending |
-| LLM-08 | Phase 2 (MVP) | Pending |
-| VISIT-01 | Phase 2 (MVP) | Pending |
-| VISIT-02 | Phase 2 (MVP) | Pending |
-| VISIT-03 | Phase 2 (MVP) | Pending |
-| VISIT-04 | Phase 2 (MVP) | Pending |
-| VISIT-05 | Phase 2 (MVP) | Pending |
-| VISIT-06 | Phase 2 (MVP) | Pending |
-| VISIT-07 | Phase 2 (MVP) | Pending |
-| VISIT-08 | Phase 2 (MVP) | Pending |
-| FRESH-01 | Phase 2 (MVP) | Pending |
-| FRESH-02 | Phase 2 (MVP) | Pending |
-| FRESH-03 | Phase 2 (MVP) | Pending |
-| FRESH-04 | Phase 2 (MVP) | Pending |
-| CACHE-01 | Phase 2 (MVP) | Pending |
-| CACHE-02 | Phase 2 (MVP) | Pending |
-| CACHE-03 | Phase 2 (MVP) | Pending |
-| CACHE-04 | Phase 2 (MVP) | Pending |
-| CACHE-05 | Phase 2 (MVP) | Pending |
-| BROWSER-01 | Phase 2 (MVP) | Pending |
-| BROWSER-02 | Phase 2 (MVP) | Pending |
-| BROWSER-03 | Phase 2 (MVP) | Pending |
-| BROWSER-04 | Phase 2 (MVP) | Pending |
-| BROWSER-05 | Phase 2 (MVP) | Pending |
-| DEPLOY-01 | Phase 2 (MVP) | Pending |
-| DEPLOY-02 | Phase 2 (MVP) | Pending |
-| DEPLOY-03 | Phase 2 (MVP) | Pending |
-| DEPLOY-04 | Phase 2 (MVP) | Pending |
-| DEPLOY-05 | Phase 2 (MVP) | Pending |
-| DEPLOY-06 | Phase 2 (MVP) | Pending |
-| OBS-01 | Phase 2 (MVP) | Pending |
-| OBS-02 | Phase 2 (MVP) | Pending |
-| OBS-03 | Phase 2 (MVP) | Pending |
-| OBS-04 | Phase 2 (MVP) | Pending |
-| OBS-05 | Phase 2 (MVP) | Pending |
-| OBS-06 | Phase 2 (MVP) | Pending |
+| SEARCH-01 | Phase 2 (MVP) | Complete |
+| SEARCH-02 | Phase 2 (MVP) | Complete |
+| SEARCH-03 | Phase 2 (MVP) | Complete |
+| SEARCH-04 | Phase 2 (MVP) | Complete |
+| SEARCH-05 | Phase 2 (MVP) | Complete |
+| SEARCH-06 | Phase 2 (MVP) | Complete |
+| SEARCH-07 | Phase 2 (MVP) | Complete |
+| SEARCH-08 | Phase 2 (MVP) | Complete |
+| LLM-01 | Phase 2 (MVP) | Complete |
+| LLM-02 | Phase 2 (MVP) | Complete |
+| LLM-03 | Phase 2 (MVP) | Complete |
+| LLM-04 | Phase 2 (MVP) | Complete |
+| LLM-05 | Phase 2 (MVP) | Complete |
+| LLM-06 | Phase 2 (MVP) | Complete |
+| LLM-07 | Phase 2 (MVP) | Complete |
+| LLM-08 | Phase 2 (MVP) | Complete |
+| VISIT-01 | Phase 2 (MVP) | Complete |
+| VISIT-02 | Phase 2 (MVP) | Complete |
+| VISIT-03 | Phase 2 (MVP) | Complete |
+| VISIT-04 | Phase 2 (MVP) | Complete |
+| VISIT-05 | Phase 2 (MVP) | Complete |
+| VISIT-06 | Phase 2 (MVP) | Complete |
+| VISIT-07 | Phase 2 (MVP) | Complete |
+| VISIT-08 | Phase 2 (MVP) | Complete |
+| FRESH-01 | Phase 2 (MVP) | Complete |
+| FRESH-02 | Phase 2 (MVP) | Complete |
+| FRESH-03 | Phase 2 (MVP) | Complete |
+| FRESH-04 | Phase 2 (MVP) | Complete |
+| CACHE-01 | Phase 2 (MVP) | Complete |
+| CACHE-02 | Phase 2 (MVP) | Complete |
+| CACHE-03 | Phase 2 (MVP) | Complete |
+| CACHE-04 | Phase 2 (MVP) | Complete |
+| CACHE-05 | Phase 2 (MVP) | Complete |
+| BROWSER-01 | Phase 2 (MVP) | Complete |
+| BROWSER-02 | Phase 2 (MVP) | Complete |
+| BROWSER-03 | Phase 2 (MVP) | Complete |
+| BROWSER-04 | Phase 2 (MVP) | Complete |
+| BROWSER-05 | Phase 2 (MVP) | Complete |
+| DEPLOY-01 | Phase 2 (MVP) | Complete |
+| DEPLOY-02 | Phase 2 (MVP) | Complete |
+| DEPLOY-03 | Phase 2 (MVP) | Complete |
+| DEPLOY-04 | Phase 2 (MVP) | Complete |
+| DEPLOY-05 | Phase 2 (MVP) | Complete |
+| DEPLOY-06 | Phase 2 (MVP) | Complete |
+| OBS-01 | Phase 2 (MVP) | Complete |
+| OBS-02 | Phase 2 (MVP) | Complete |
+| OBS-03 | Phase 2 (MVP) | Complete |
+| OBS-04 | Phase 2 (MVP) | Complete |
+| OBS-05 | Phase 2 (MVP) | Complete |
+| OBS-06 | Phase 2 (MVP) | Complete |
 | OBS-07 | Phase 3 (Robustness) | Complete |
-| NF-01 | Phase 2 (MVP) | Pending |
-| NF-02 | Phase 2 (MVP) | Pending |
-| NF-03 | Phase 2 (MVP) | Pending |
-| NF-04 | Phase 2 (MVP) | Pending |
+| NF-01 | Phase 2 (MVP) | Complete |
+| NF-02 | Phase 2 (MVP) | Complete |
+| NF-03 | Phase 2 (MVP) | Complete |
+| NF-04 | Phase 2 (MVP) | Complete |
 
 **Phase 1 (Spike)** carries zero v1 requirements by design — it produces fixtures + `SPIKE.md` Go/No-Go gating Phase 2 lock-in of D1, D3, D4, D8, D10, D11, D12 from `research/SUMMARY.md`.
 
@@ -218,3 +218,4 @@ Phase mapping per `.planning/ROADMAP.md`. **GSD Phase numbering:** 1 = Spike (PR
 ---
 *Requirements defined: 2026-06-01 from PRD v0.1 + research synthesis (5 docs in `.planning/research/`)*
 *Last updated: 2026-06-01 by gsd-roadmapper (Traceability mapped to GSD Phase 1-5 per `.planning/ROADMAP.md`)*
+*Status flip: 2026-06-04 by Phase 3.1 (v0.1 close hygiene). 53/53 reqs Complete per VERIFICATION.md evidence.*
