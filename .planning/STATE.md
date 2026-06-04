@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: "close hygiene: REQUIREMENTS.md traceability flip + SUMMARY frontmatter population + tests/test_e2e.py X-API-Key header + degraded-mode TestClient coverage + slowapi rate-limit settings-source-of-truth + Nyquist wave-0 accept/complete for phases 1-3"
-status: executing
-stopped_at: Phase 3.1 Plan 03 partial (Tasks 1+2 — D-05 Pattern B refactor + propagation test; Task 4 D-06 empirical retest queued for orchestrator)
-last_updated: "2026-06-04T04:00:00.000Z"
+status: ready_to_close
+stopped_at: Phase 3.1 verified PASS (11/11 must-haves); ready for /gsd-complete-milestone v0.1
+last_updated: "2026-06-04T04:10:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
-  percent: 70
+  completed_phases: 4
+  total_plans: 11
+  completed_plans: 11
+  percent: 80
 ---
 
 # State: artiscrapper v0
@@ -21,20 +21,20 @@ progress:
 
 ## Current Position
 
-Phase: 3.1
-Plan: 03 partial (Wave 3 Tasks 1+2 — D-05 Pattern B refactor + propagation test; Task 4 D-06 empirical retest pending)
+Phase: 3.1 COMPLETE — VERIFICATION.md status=passed (11/11 must-haves)
+Plan: all 3 plans closed (03.1-01, 03.1-02, 03.1-03)
 
-- **Active phase:** 3.1 (v0.1 close hygiene; 2/3 plans done + Plan 03 Tasks 1+2 of 4 landed)
-- **Phases completed:** 3/5 (1, 2, 3 — Phase 3.1 still in progress)
-- **Plans completed:** 10 total (3+3+2+2; Plan 03.1-02 closed 2026-06-04; Plan 03.1-03 partial)
+- **Active phase:** none — Phase 3.1 closed cleanly, all v0.1 audit items resolved
+- **Phases completed:** 4/5 (1, 2, 3, 3.1)
+- **Plans completed:** 11 total (3+3+2+3)
 - **Quick tasks completed:** 0
-- **Next command:** orchestrator runs Task 4 (D-06 empirical retest — docker compose bump-and-recreate cycle) to close Plan 03
+- **Next command:** `/gsd-complete-milestone v0.1` to formally close the milestone and decide deferred-phases scope (audit item #7)
 
 ```
 Phase 1   — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
 Phase 2   — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
 Phase 3   — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
-Phase 3.1 — v0.1 close hygiene (INSERTED)       [~] in progress   (2/3 plans done + Plan 03 Tasks 1+2 landed; Task 4 D-06 empirical retest pending)
+Phase 3.1 — v0.1 close hygiene (INSERTED)       [x] complete      (2026-06-04, 3/3 plans, VERIFICATION PASS 11/11)
 Phase 4   — Production Operations               [ ] deferred      (on demand from prod telemetry)
 Phase 5   — Expansion                           [ ] deferred      (on growth trigger)
 ```

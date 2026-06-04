@@ -133,9 +133,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03.1-01-PLAN.md — Wave 1 — Traceability bookkeeping: REQUIREMENTS.md 52-row flip (D-01) + 4 SUMMARY frontmatter requirements_completed lists (D-02) + 3 VALIDATION.md accept with per-phase Acceptance Rationale (D-07/D-08). Pure planning-artifact diff, zero source touch.
-- [ ] 03.1-02-PLAN.md — Wave 2 — Test additions + WR cleanup: X-API-Key headers in tests/test_e2e.py (D-03) + degraded-mode TestClient sibling using real SERP fixture (D-04) + tldextract MELI guard + regression test (WR-01) + WR-02 verify-only confirmation (no source diff per RESEARCH §5) + WR-03 tautology removal + WR-04 NamedTemporaryFile→mkdtemp+atexit. Runs parallel-eligible with 03.1-01 (zero file overlap).
-- [ ] 03.1-03-PLAN.md — Wave 3 — slowapi settings refactor (D-05) + R-01 mitigation + D-06 empirical retest: module-level `_RATE_LIMIT_PER_*` constants + `Limiter(default_limits=...)` + remove stacked decorators + `@limiter.exempt` on /health and /health/deep + updated rate_limit_init log with `source="default_limits"` provenance + test_health_never_rate_limited invariant + default_limits propagation test + D-06 bump-and-recreate empirical UAT (Claude runs as operator per `feedback_agent_as_uat_operator`). Depends on 03.1-02 so test infrastructure is stable underfoot.
+- [x] 03.1-01-PLAN.md — Wave 1 — Traceability bookkeeping: REQUIREMENTS.md 55-row flip (D-01) + 4 SUMMARY frontmatter requirements_completed lists (D-02) + 3 VALIDATION.md accept with per-phase Acceptance Rationale (D-07/D-08). Pure planning-artifact diff, zero source touch. (completed 2026-06-04)
+- [x] 03.1-02-PLAN.md — Wave 2 — Test additions + WR cleanup: X-API-Key headers in tests/test_e2e.py (D-03) + degraded-mode TestClient sibling using real SERP fixture (D-04) + tldextract MELI guard + regression test (WR-01) + WR-02 verify-only confirmation (no source diff per RESEARCH §5) + WR-03 tautology removal + WR-04 NamedTemporaryFile→mkdtemp+atexit. (completed 2026-06-04)
+- [x] 03.1-03-PLAN.md — Wave 3 — slowapi settings refactor via **Pattern B** (D-05) + D-06 empirical retest: module-level `_RATE_LIMIT_PER_*` constants referenced by `@limiter.limit()` decorator argument + `rate_limit_init` log line uses same constants + propagation invariant test + D-06 bump-and-recreate empirical UAT (5×200 + 6th 429 with `per_minute="5/minute"` in log). Pattern A (`default_limits` on Limiter constructor) deemed non-viable on slowapi 0.1.9 + FastAPI by empirical regression — see Deviation Note in PLAN.md. R-01 mitigation N/A under Pattern B (limits only fire on decorated routes). (completed 2026-06-04)
 
 ### Phase 4: Production Operations
 
@@ -189,6 +189,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Spike & Empirical Validation | 3/3 | Complete   | 2026-06-01 |
 | 2. MVP | 3/3 | Complete   | 2026-06-02 |
 | 3. Robustness | 2/2 | Complete    | 2026-06-03 |
+| 3.1. v0.1 Close Hygiene (INSERTED) | 3/3 | Complete   | 2026-06-04 |
 | 4. Production Operations | 0/TBD | Not started | - |
 | 5. Expansion | 0/TBD | Not started | - |
 
