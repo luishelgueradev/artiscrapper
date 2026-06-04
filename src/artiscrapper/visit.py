@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 import httpx
 import structlog
+import tldextract
 from selectolax.parser import HTMLParser
 
 from .metrics import inc_visit_failed, metrics, visit_elapsed  # noqa: F401  (metrics kept for backwards-compat readers)
@@ -24,6 +25,29 @@ log = structlog.get_logger()
 
 GLOBAL_VISIT_CAP = 8
 PER_HOST_CAP = 2
+
+# ── WR-01 (Phase 3.1): suffix-aware MELI registered-domain set ──
+# The pre-fix substring containment check on `netloc` over-matched
+# `notmercadolibre.com`, `mercadoliberia.com`, etc. — silently dropping
+# legitimate results (visit_failed inflation). tldextract is
+# public-suffix-aware and a `registered_domain` comparison eliminates
+# the false positive.
+#
+# Sister registry: freshness.MELI_HOSTS (full hostnames including
+# `listado.` / `articulo.` subdomains for the date-based freshness
+# path). They intentionally serve different purposes: freshness wants
+# HOSTS (subdomain-specific), the visit guard wants REGISTERED_DOMAIN
+# (suffix-aware). Don't merge them.
+_MELI_REGISTERED_DOMAINS = frozenset({
+    "mercadolibre.com.ar",
+    "mercadolibre.com",
+    "mercadolibre.com.mx",
+    "mercadolibre.cl",
+    "mercadolibre.com.uy",
+    "mercadolibre.com.br",
+    "mercadolibre.com.co",
+    "mercadolibre.com.pe",
+})
 
 # D11: Chromium-146 headers — Sec-Fetch-Site: cross-site + Referer: https://www.google.com/
 DEFAULT_HEADERS = {
@@ -325,9 +349,13 @@ async def visit_candidates(
     async def visit_one(candidate: dict) -> dict:
         url = candidate["url"]
 
-        # VISIT-08: FIRST CHECK — never visit *.mercadolibre.*
+        # VISIT-08 + WR-01 (Phase 3.1): suffix-aware MELI match.
+        # Uses tldextract (pinned at 5.3.1, already used in metrics.py) to
+        # compare on registered_domain — public-suffix-aware. Eliminates
+        # false positives on notmercadolibre.com, mercadoliberia.com, etc.
         # This is a security control (architecture-level), not optional.
-        if "mercadolibre." in urlparse(url).netloc:
+        ext = tldextract.extract(url)
+        if ext.registered_domain.lower() in _MELI_REGISTERED_DOMAINS:
             candidate["flags"] = candidate.get("flags", []) + ["meli_skip"]
             return candidate
 

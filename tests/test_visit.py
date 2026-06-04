@@ -198,3 +198,37 @@ async def test_skip_if_price_present():
     # Candidate returned as-is with price preserved
     assert results[0]["price"] == "18032"
     assert "meli_skip" not in results[0].get("flags", [])
+
+
+async def test_meli_guard_no_false_positive_on_notmercadolibre():
+    """
+    WR-01 regression (Phase 3.1): tldextract.registered_domain match
+    must NOT fire on notmercadolibre.com. The pre-Phase-3.1 substring
+    check `"mercadolibre." in netloc` would have falsely returned
+    meli_skip for this URL, silently dropping a legitimate result.
+
+    This test pins the fix so a future regression (revert to substring
+    matching) trips immediately.
+    """
+    candidate = {
+        "url": "https://notmercadolibre.com/product-123",
+        "title": "Not MELI",
+        "flags": [],
+    }
+    # If the guard fires it returns immediately (no HTTP). If it does NOT
+    # fire, respx (no routes defined) would raise on the actual GET — so
+    # we register a benign route to keep the test focused on the flag
+    # assertion, not the HTTP path.
+    with respx.mock:
+        respx.get("https://notmercadolibre.com/product-123").mock(
+            return_value=httpx.Response(
+                200,
+                content=b"<html><body>" + b"x" * 5001 + b"</body></html>",
+                headers={"content-type": "text/html; charset=utf-8"},
+            )
+        )
+        results = await visit_candidates([candidate])
+
+    assert "meli_skip" not in results[0].get("flags", []), (
+        "WR-01: notmercadolibre.com is NOT a MELI domain — guard must not fire"
+    )
