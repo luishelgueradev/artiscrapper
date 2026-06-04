@@ -208,14 +208,16 @@ Phase mapping per `.planning/ROADMAP.md`. **GSD Phase numbering:** 1 = Spike (PR
 **Phase 1 (Spike)** carries zero v1 requirements by design — it produces fixtures + `SPIKE.md` Go/No-Go gating Phase 2 lock-in of D1, D3, D4, D8, D10, D11, D12 from `research/SUMMARY.md`.
 
 **Coverage:**
-- v1 requirements: 53 total (en SEARCH/LLM/VISIT/FRESH/CACHE/BROWSER/DEPLOY/OBS/NF)
+- v1 requirements: 55 REQ-IDs (en SEARCH×8 + LLM×8 + VISIT×8 + FRESH×4 + CACHE×5 + BROWSER×5 + DEPLOY×6 + OBS×7 + NF×4)
 - v2 requirements: 13 total (SUP/MELI/ADV/MULTI — todos diferidos a GSD Phase 4-5)
-- Mapped to phases: **53/53 (100%)**
+- Mapped to phases: **55/55 (100%)** — Phase 2 closes 54, Phase 3 closes OBS-07
 - Unmapped: 0
 - Orphans: 0
 - Duplicates: 0
 
+> Note: ROADMAP.md historically framed v1 as "55 REQ-IDs across 53 logical reqs". After 2026-06-04 audit (Phase 3.1 traceability flip), the canonical count is 55 unique REQ-IDs — each maps to exactly one SUMMARY's `requirements_completed:` field and one VERIFICATION.md row. The "53 logical" framing is deprecated.
+
 ---
 *Requirements defined: 2026-06-01 from PRD v0.1 + research synthesis (5 docs in `.planning/research/`)*
 *Last updated: 2026-06-01 by gsd-roadmapper (Traceability mapped to GSD Phase 1-5 per `.planning/ROADMAP.md`)*
-*Status flip: 2026-06-04 by Phase 3.1 (v0.1 close hygiene). 53/53 reqs Complete per VERIFICATION.md evidence.*
+*Status flip: 2026-06-04 by Phase 3.1 (v0.1 close hygiene). 55/55 REQ-IDs Complete per VERIFICATION.md evidence + SUMMARY frontmatter union.*
