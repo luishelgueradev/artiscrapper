@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: "close hygiene: REQUIREMENTS.md traceability flip + SUMMARY frontmatter population + tests/test_e2e.py X-API-Key header + degraded-mode TestClient coverage + slowapi rate-limit settings-source-of-truth + Nyquist wave-0 accept/complete for phases 1-3"
-status: ready_to_plan
-stopped_at: Phase 3.1 context gathered
-last_updated: "2026-06-04T01:59:30.791Z"
+status: executing
+stopped_at: Phase 3.1 Plan 01 executed (Wave 1 — bookkeeping flip)
+last_updated: "2026-06-04T02:30:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 60
+  total_plans: 9
+  completed_plans: 9
+  percent: 65
 ---
 
 # State: artiscrapper v0
@@ -22,19 +22,19 @@ progress:
 ## Current Position
 
 Phase: 3.1
-Plan: Not started
+Plan: 01 complete (Wave 1 — bookkeeping flip); Plans 02 + 03 pending
 
-- **Active phase:** 3.1 (INSERTED — v0.1 close hygiene; 0 plans yet)
-- **Phases completed:** 3/5 (1, 2, 3 — Phase 3.1 inserted post-execution)
-- **Plans completed:** 8/8 milestone-to-date (3+3+2)
+- **Active phase:** 3.1 (v0.1 close hygiene; 1/3 plans done, 2 plans to go in waves 2-3)
+- **Phases completed:** 3/5 (1, 2, 3 — Phase 3.1 still in progress)
+- **Plans completed:** 9 total (3+3+2+1; Plan 03.1-01 closed 2026-06-04)
 - **Quick tasks completed:** 0
-- **Next command:** `/gsd-plan-phase 3.1` to break down v0.1 closure hygiene work
+- **Next command:** `/gsd-execute-phase 3.1 --plan 02` to run Wave 2 (test additions + slowapi refactor)
 
 ```
 Phase 1   — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
 Phase 2   — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
 Phase 3   — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
-Phase 3.1 — v0.1 close hygiene (INSERTED)       [ ] not planned   (0 plans yet — runs before milestone close)
+Phase 3.1 — v0.1 close hygiene (INSERTED)       [~] in progress   (1/3 plans done: 01-bookkeeping; 02-tests-refactor + 03-WR pending)
 Phase 4   — Production Operations               [ ] deferred      (on demand from prod telemetry)
 Phase 5   — Expansion                           [ ] deferred      (on growth trigger)
 ```
@@ -85,9 +85,9 @@ _(none yet — quick tasks track ad-hoc fixes outside the phase structure)_
 
 ## Session Continuity
 
-- **Last session:** 2026-06-04T01:59:30.779Z
-- **Stopped at:** Phase 3.1 context gathered
-- **Resume command:** `/gsd-plan-phase 3.1`
+- **Last session:** 2026-06-04T02:30:00.000Z
+- **Stopped at:** Phase 3.1 Plan 01 executed (Wave 1 — REQUIREMENTS.md flip + 4 SUMMARY frontmatters + 3 VALIDATION.md accepts; 3 commits c601623, e82bd6c, d2fda2c)
+- **Resume command:** `/gsd-execute-phase 3.1 --plan 02`
 - **Files to load next session:**
   - `.planning/v0.1-MILESTONE-AUDIT.md` (7 tech-debt items that drive Phase 3.1 plans)
   - `.planning/ROADMAP.md` §Phase 3.1 entry (line 128)
