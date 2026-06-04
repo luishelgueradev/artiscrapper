@@ -5,7 +5,9 @@ OBS-02: GET /health/deep — real Cloak nav + LLM HEAD probe.
 Pattern 11 from 02-RESEARCH.md (lines 1233-1293).
 """
 
+import atexit
 import os
+import shutil
 import tempfile
 from unittest.mock import AsyncMock, MagicMock
 
@@ -13,12 +15,24 @@ import httpx
 import pytest
 import respx
 
-# Set required env vars before importing app.
-# CACHE_DB_PATH must point to a writable location so lifespan aiosqlite.connect works.
-_tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-_tmp_db.close()
+# WR-04 (Phase 3.1): tempfile.mkdtemp + atexit cleanup eliminates the
+# orphan /tmp/tmp*.db leak that the previous named-temp-file pattern
+# (with delete=False) produced every test run. The tmp DIR (not just the
+# file) is rm-recursed at interpreter exit.
+#
+# CACHE_DB_PATH MUST be set at module-import time (before
+# `from src.artiscrapper.main import app` below) because pydantic-settings
+# reads env once at first Settings() call. pytest's `tmp_path` is
+# function-scope and fires too late — that's why mkdtemp + atexit are
+# the right shape here, not the `tmp_path` fixture.
+_TMP_DB_DIR = tempfile.mkdtemp(prefix="artiscrapper-test-health-")
+_TMP_DB_PATH = os.path.join(_TMP_DB_DIR, "cache.db")
+atexit.register(lambda: shutil.rmtree(_TMP_DB_DIR, ignore_errors=True))
+
 os.environ.setdefault("LLM_ROUTER_BEARER_TOKEN", "test-token-health")
-os.environ["CACHE_DB_PATH"] = _tmp_db.name
+os.environ.setdefault("CACHE_DB_PATH", _TMP_DB_PATH)
+# ↑ WR-04: setdefault (not bracket assignment) honors the cross-test
+# contract — first-importing test wins, siblings do not clobber.
 # CR-03: /health/deep is now gated behind verify_api_key. Merge our test key
 # into any existing API_KEYS (cross-test contract — see test_auth.py).
 _hl_existing_keys = os.environ.get("API_KEYS", "").strip()
