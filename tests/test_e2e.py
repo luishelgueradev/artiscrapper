@@ -43,7 +43,11 @@ def test_serp_pelota():
     pelota playera quico = beach ball (Spanish AR query for e-commerce auto-parts shop context)
     """
     with httpx.Client(base_url=_BASE_URL, timeout=60.0) as client:
-        resp = client.post("/search", json={"query": "pelota playera quico"})
+        resp = client.post(
+            "/search",
+            json={"query": "pelota playera quico"},
+            headers={"X-API-Key": os.getenv("E2E_API_KEY", "test-key-1")},
+        )
 
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text[:300]}"
 
@@ -84,11 +88,19 @@ def test_cache_hit():
     query = "pelota playera quico"
     with httpx.Client(base_url=_BASE_URL, timeout=60.0) as client:
         # Ensure the cache is populated (may already be from test_serp_pelota)
-        client.post("/search", json={"query": query})
+        client.post(
+            "/search",
+            json={"query": query},
+            headers={"X-API-Key": os.getenv("E2E_API_KEY", "test-key-1")},
+        )
 
         # Second call should be a cache hit
         t0 = time.monotonic()
-        resp = client.post("/search", json={"query": query})
+        resp = client.post(
+            "/search",
+            json={"query": query},
+            headers={"X-API-Key": os.getenv("E2E_API_KEY", "test-key-1")},
+        )
         elapsed_ms = (time.monotonic() - t0) * 1000
 
     assert resp.status_code == 200
