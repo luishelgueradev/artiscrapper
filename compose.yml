@@ -35,3 +35,8 @@ services:
       # No-op on Docker Desktop where it's already wired by default.
       - "host.docker.internal:host-gateway"
     init: true  # equivalent to tini if not using ENTRYPOINT tini
+    # Auto-restart al reinicio del WSL/Docker daemon. "unless-stopped" respeta
+    # `docker compose down` (no se reinicia manualmente bajado), pero vuelve
+    # arriba si el daemon se reinicia (caso típico: reboot de Windows con
+    # Docker Desktop autostart, o cierre de la distro WSL).
+    restart: unless-stopped
