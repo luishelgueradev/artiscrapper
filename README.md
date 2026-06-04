@@ -102,9 +102,9 @@ Las variables se persisten en `.env` (chmod 600) y `docker compose` las inyecta 
 | `API_RATE_PER_DAY` | `10000` | Quota slowapi por API-key por día. | No |
 | `SENTRY_DSN` | (vacío) | DSN de Sentry. Vacío = SDK NO se inicializa (default seguro). | No |
 | `HOST_PORT` | `8000` | Puerto del host (el contenedor siempre escucha en `:8000` interno). | No |
-| `GOOGLE_MIN_INTERVAL_S` | `60` | Gap mínimo entre fetches a Google (rate-limit interno por VPS). | No |
+| `GOOGLE_MIN_INTERVAL_S` | `0` | Gap mínimo entre fetches a Google. Path B (2026-06-04): `0` permite que las 2 fetches del mismo `/search` corran realmente paralelas. La defensa primaria contra burst es el rate-limit slowapi por API-key. | No |
 | `BROWSER_RECYCLE_AFTER` | `200` | Fetches antes de reciclar el singleton Browser. | No |
-| `LLM_CONCURRENCY` | `4` | Semáforo del curator LLM. | No |
+| `LLM_CONCURRENCY` | `8` | Semáforo del curator LLM. Path B (2026-06-04): empíricamente sem(4) ≈ sem(2) contra `local-llms-router`; 8 maximiza throughput sin saturar consumidores compartidos (OpenWebUI). | No |
 | `LOG_JSON` | `true` | structlog JSON output (recomendado en prod). | No |
 | `LOG_LEVEL` | `INFO` | Nivel de log. | No |
 | `CACHE_DB_PATH` | `/app/cache.db` | Path al sqlite cache dentro del contenedor. Hardcoded en `compose.yml`. | No |
@@ -251,7 +251,7 @@ check_gate(cache)  ─── closed? ───▶ 503 + Retry-After + block_dete
 asyncio.gather(
    fetch_serp(browser, url_q),
    fetch_serp(browser, url_q+mercadolibre)
-) con GoogleRateLimiter(60s)
+) con GoogleRateLimiter (default 0s desde Path B 2026-06-04 — fetches paralelos)
    │
    ▼
 _detect_block(htmls) ─── true? ───▶ record_block + 200 con block_detected=true
@@ -266,11 +266,19 @@ dedupe + is_junk blocklist (drops ~30% pre-LLM)
 record_success (D-07 ≥1h reset, WR-07 solo si hay survivors)
    │
    ▼
-router_health_check ─── falla? ───▶ degraded: heurístico price-in-card
-   │ ok                                            (llm_degraded=true)
-   ▼
-curate_candidates (Semáforo(4), 5s timeout, <0.4 cutoff, drop blogs)
-   │ con inc_llm_fallback(reason) en 6 sitios
+heuristic_pre_classify ─── kept_pre (price_in_card OR known_store) ──┐
+   │                                                                  │
+   │ ambiguous (~24% típico)                                           │
+   ▼                                                                   │
+router_health_check ─── falla? ───▶ degraded: heurístico (ambig.)     │
+   │ ok                                            (llm_degraded=true) │
+   ▼                                                                   │
+curate_candidates (Semáforo(8), 5s timeout, <0.4 cutoff, drop blogs)  │
+   │ con inc_llm_fallback(reason) en 6 sitios                          │
+   │ → kept_llm                                                        │
+   ▼                                                                   │
+survivors = kept_pre + kept_llm  ◀──────────────────────────────────────┘
+   │
    ▼
 visit_candidates (httpx http2, Sem global(8) + per-host(2),
                   MELI guard tldextract, extractor JSON-LD/OG/microdata/AR-regex)

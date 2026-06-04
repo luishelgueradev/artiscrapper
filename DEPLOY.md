@@ -106,9 +106,9 @@ Las variables se persisten en `.env` (chmod 600) y `docker compose` las inyecta 
 | `API_RATE_PER_DAY` | Quota slowapi por API-key/día. | `10000` | No |
 | `SENTRY_DSN` | DSN de Sentry. Vacío = SDK NO se inicializa. | (vacío) | No |
 | `HOST_PORT` | Puerto del host (el container siempre escucha en `:8000` interno). | `8000` | No |
-| `GOOGLE_MIN_INTERVAL_S` | Gap mínimo entre fetches a Google (rate-limit interno). Hardcoded en `compose.yml`. | `60` | No |
+| `GOOGLE_MIN_INTERVAL_S` | Gap mínimo entre fetches a Google. Path B (2026-06-04): default `0` permite las 2 fetches del mismo `/search` en paralelo. Defensa contra burst la hace slowapi por API-key. | `0` | No |
 | `BROWSER_RECYCLE_AFTER` | Cantidad de fetches antes de reciclar el singleton Browser. | `200` | No |
-| `LLM_CONCURRENCY` | Semáforo del curator LLM. | `4` | No |
+| `LLM_CONCURRENCY` | Semáforo del curator LLM. Path B (2026-06-04): `8` maximiza throughput contra `local-llms-router` sin saturar OpenWebUI. Sem 4 ≈ sem 2 empíricamente. | `8` | No |
 | `LOG_JSON` | structlog JSON output (recomendado en prod). | `true` | No |
 | `LOG_LEVEL` | Nivel de log. | `INFO` | No |
 | `CACHE_DB_PATH` | Path al sqlite cache dentro del container. Hardcoded; no override. | `/app/cache.db` | No |

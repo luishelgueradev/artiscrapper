@@ -80,7 +80,8 @@ To be defined via `/gsd-new-milestone` at next planning session. Candidate trigg
 - **Logging — structlog 25+**: `merge_contextvars` + correlation_id desde el principio (NOT retrofitted).
 - **Deploy — 1 container Docker**: Cloak embebido vía Playwright en mismo proceso, no servicio separado.
 - **Rate limit — slowapi 0.1.9 Pattern B**: `_RATE_LIMIT_PER_*` module constants computed from settings; `@limiter.limit(_RATE_LIMIT_PER_MINUTE)` + `@limiter.limit(_RATE_LIMIT_PER_DAY)` on `/search`; `rate_limit_init` log line reads same constants (drift impossible by construction). Pattern A (`Limiter(default_limits=...)`) rejected — empirically non-viable on slowapi 0.1.9 + FastAPI.
-- **Google rate limit — 60s gap**: `GoogleRateLimiter(min_interval_s=60)` in lifespan.
+- **Google rate limit — 0s gap por default desde Path B (2026-06-04)**: `GoogleRateLimiter(min_interval_s=settings.GOOGLE_MIN_INTERVAL_S)` con `GOOGLE_MIN_INTERVAL_S=0` default (era 60s). Las 2 fetches del mismo `/search` corren paralelo. Defensa contra burst la hace slowapi consumer rate-limit por API-key. Ver `.planning/PERFORMANCE-AUDIT-2026-06-04.md` §3-§4.
+- **Heuristic pre-classifier (Path B 2026-06-04)**: `search.heuristic_pre_classify()` resuelve ~76% de candidatos típicos por reglas simples (price_in_card OR known_store host) ANTES del LLM. El LLM solo decide sobre el 24% ambiguo. Reduce cold-path LLM phase de ~75s a ~5-8s, baja 4x la carga al `local-llms-router`, mantiene F1 0.92 vs 0.90 del LLM solo.
 - **Cache siempre primero**: NUNCA disparar Google sin chequear sqlite previo (validated by main.py `/search` step ordering).
 - **LLM timeout — 5s/candidato**: on timeout → `confidence=0.3` (DROPPED at `<0.4` cut per D2 foot-gun, `metadata.llm_degraded` surfaced).
 - **Visit pass skip-if-you-can**: never visit links with SERP price OR MELI hosts.
