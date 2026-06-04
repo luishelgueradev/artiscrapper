@@ -171,6 +171,33 @@ def _make_mock_browser() -> MagicMock:
     return browser
 
 
+def _reset_challenge_state_dm(db_path: str) -> None:
+    """
+    Mirrors tests/integration/test_challenge_backoff.py::_reset_challenge_state
+    exactly. Reset the `challenge_state` seed row in the SHARED test db so a
+    prior sibling test (test_challenge_backoff:test_503_with_retry_after) does
+    not leak `next_allowed_at > now` into the degraded-mode test session.
+    Uses raw sqlite3 since this runs OUTSIDE the asyncio loop.
+    Row may not yet exist if the challenge_state table was just created by
+    init_schema — UPDATE is a no-op in that case (safe).
+    """
+    import sqlite3
+
+    try:
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "UPDATE challenge_state "
+                "SET last_block_at=NULL, retry_count=0, next_allowed_at=0, "
+                "updated_at=strftime('%s','now') "
+                "WHERE id=1"
+            )
+            conn.commit()
+    except sqlite3.OperationalError:
+        # Table might not exist yet (lifespan hasn't run). Harmless —
+        # check_gate() handles the missing-row case via lazy-init.
+        pass
+
+
 def test_degraded_mode_via_search_endpoint(monkeypatch):
     """
     D-04 / LLM-06 end-to-end coverage: when `router_health_check` returns
@@ -208,8 +235,12 @@ def test_degraded_mode_via_search_endpoint(monkeypatch):
     )
 
     # Reset challenge_backoff state so a sibling test's block-state
-    # doesn't deny our request.
+    # doesn't deny our request. Two-level reset required:
+    #   (1) in-memory _STATE singleton (cleared here)
+    #   (2) the sqlite challenge_state row (cleared inside the TestClient
+    #       block AFTER lifespan has run init_schema — see below)
     from src.artiscrapper import challenge_backoff as cb
+    from src.artiscrapper.config import settings as _settings
 
     cb._STATE = None
 
@@ -217,6 +248,14 @@ def test_degraded_mode_via_search_endpoint(monkeypatch):
     body = {"query": "pelota playera quico", "max_results": 10}
 
     with TestClient(app) as client:
+        # Resolve the ACTUAL db path the app is using (may not be our
+        # local _tmp_db.name if a sibling test file's tempfile was
+        # imported first and won the os.environ.setdefault race for
+        # CACHE_DB_PATH — same pattern as test_challenge_backoff.py:205).
+        _active_db_path = _settings.CACHE_DB_PATH
+        _reset_challenge_state_dm(_active_db_path)
+        cb._STATE = None  # discard stale in-memory snapshot after sqlite reset
+
         # Reset slowapi limiter (sibling test bleed defense — mirrors
         # the pattern in test_challenge_backoff.py:209)
         try:
@@ -226,7 +265,6 @@ def test_degraded_mode_via_search_endpoint(monkeypatch):
         except (AttributeError, Exception):
             pass
 
-        cb._STATE = None
         r = client.post("/search", headers=headers, json=body)
 
     assert r.status_code == 200, (
