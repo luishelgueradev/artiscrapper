@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: "close hygiene: REQUIREMENTS.md traceability flip + SUMMARY frontmatter population + tests/test_e2e.py X-API-Key header + degraded-mode TestClient coverage + slowapi rate-limit settings-source-of-truth + Nyquist wave-0 accept/complete for phases 1-3"
 status: executing
-stopped_at: Phase 3.1 Plan 02 executed (Wave 2 — tests + WR cleanup)
-last_updated: "2026-06-04T03:00:00.000Z"
+stopped_at: Phase 3.1 Plan 03 partial (Tasks 1+2 — D-05 Pattern B refactor + propagation test; Task 4 D-06 empirical retest queued for orchestrator)
+last_updated: "2026-06-04T04:00:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 3
@@ -22,19 +22,19 @@ progress:
 ## Current Position
 
 Phase: 3.1
-Plan: 02 complete (Wave 2 — tests + WR cleanup); Plan 03 pending
+Plan: 03 partial (Wave 3 Tasks 1+2 — D-05 Pattern B refactor + propagation test; Task 4 D-06 empirical retest pending)
 
-- **Active phase:** 3.1 (v0.1 close hygiene; 2/3 plans done, 1 plan to go in wave 3)
+- **Active phase:** 3.1 (v0.1 close hygiene; 2/3 plans done + Plan 03 Tasks 1+2 of 4 landed)
 - **Phases completed:** 3/5 (1, 2, 3 — Phase 3.1 still in progress)
-- **Plans completed:** 10 total (3+3+2+2; Plan 03.1-02 closed 2026-06-04)
+- **Plans completed:** 10 total (3+3+2+2; Plan 03.1-02 closed 2026-06-04; Plan 03.1-03 partial)
 - **Quick tasks completed:** 0
-- **Next command:** `/gsd-execute-phase 3.1 --plan 03` to run Wave 3 (slowapi settings-source-of-truth refactor + D-06 empirical retest)
+- **Next command:** orchestrator runs Task 4 (D-06 empirical retest — docker compose bump-and-recreate cycle) to close Plan 03
 
 ```
 Phase 1   — Spike & Empirical Validation       [x] complete      (2026-06-01, 3/3 plans)
 Phase 2   — MVP                                 [x] complete      (2026-06-02, 3/3 plans)
 Phase 3   — Robustness                          [x] complete      (2026-06-03, 2/2 plans)
-Phase 3.1 — v0.1 close hygiene (INSERTED)       [~] in progress   (2/3 plans done: 01-bookkeeping + 02-tests-WR; 03-slowapi-refactor pending)
+Phase 3.1 — v0.1 close hygiene (INSERTED)       [~] in progress   (2/3 plans done + Plan 03 Tasks 1+2 landed; Task 4 D-06 empirical retest pending)
 Phase 4   — Production Operations               [ ] deferred      (on demand from prod telemetry)
 Phase 5   — Expansion                           [ ] deferred      (on growth trigger)
 ```
@@ -60,6 +60,7 @@ Phase 5   — Expansion                           [ ] deferred      (on growth t
 | 2026-06-04 | Phase 3.1 Plan 02: WR-01 MELI guard uses tldextract.registered_domain instead of `"mercadolibre." in netloc` substring (frozenset of 8 MELI registered domains) | Substring over-matched notmercadolibre.com / mercadoliberia.com; tldextract 5.3.1 already pinned + public-suffix-aware; no new dep |
 | 2026-06-04 | Phase 3.1 Plan 02: WR-02 verify-only (no source diff) — strong-ref pattern already in place at main.py:207 + 668-670 | Audit text referenced pre-Phase-3 line numbers; re-emitting a fix would produce no-op diff + falsely claim a fix (R-02 mitigation) |
 | 2026-06-04 | Phase 3.1 Plan 02: WR-04 uses tempfile.mkdtemp + atexit.register cleanup (NOT pytest tmp_path) for tests/test_health.py CACHE_DB_PATH | CACHE_DB_PATH must be set at module-import time before pydantic-settings reads env; tmp_path is function-scope and fires too late |
+| 2026-06-04 | Phase 3.1 Plan 03: D-05 lands as Pattern B (module constants referenced by @limiter.limit decorator args), NOT Pattern A (Limiter default_limits) | Empirical: slowapi 0.1.9 does NOT auto-apply default_limits without SlowAPIMiddleware, and SlowAPIMiddleware crashes on first request in 0.1.9+FastAPI (AttributeError on TypeError). Pattern B preserves the single-source-of-truth intent (drift impossible by construction) without depending on broken middleware. See 03.1-03-PLAN.md Deviation Note (2026-06-04). |
 
 ## Active TODOs
 
@@ -88,15 +89,14 @@ _(none yet — quick tasks track ad-hoc fixes outside the phase structure)_
 
 ## Session Continuity
 
-- **Last session:** 2026-06-04T03:00:00.000Z
-- **Stopped at:** Phase 3.1 Plan 02 executed (Wave 2 — D-03 X-API-Key in e2e + D-04 degraded-mode TestClient + WR-01 tldextract guard + WR-02 verify-only + WR-03 tautology fix + WR-04 mkdtemp+atexit; 7 commits bd9d176, f9f25fc, d527e4d, 626314c, aa9937e, e5390e5, 58be58d. Full quick suite 67 passed / 2 deselected.)
-- **Resume command:** `/gsd-execute-phase 3.1 --plan 03`
+- **Last session:** 2026-06-04T04:00:00.000Z
+- **Stopped at:** Phase 3.1 Plan 03 partial (Wave 3 Tasks 1+2 — D-05 Pattern B refactor of src/artiscrapper/main.py + new tests/test_main.py propagation invariant; commits 1f44310 (refactor), f29ee77 (test). Full quick suite 68 passed / 2 deselected — +1 vs prior baseline. Task 4 (D-06 empirical retest) queued for orchestrator; non-autonomous because it needs docker compose bump-and-recreate cycle.)
+- **Resume command:** orchestrator runs Task 4 D-06 (recipe in 03.1-03-PLAN.md `<how-to-verify>` Steps 1-10)
 - **Files to load next session:**
-  - `.planning/v0.1-MILESTONE-AUDIT.md` (tech_debt[4] = slowapi settings-source-of-truth refactor is what Plan 03 closes)
-  - `.planning/ROADMAP.md` §Phase 3.1 entry (line 128)
-  - `.planning/phases/03.1-v0-1-close-hygiene-requirements-md-traceability-flip-summary/03.1-RESEARCH.md` §1 (slowapi default_limits pattern A — chosen recipe)
-  - `.planning/phases/03.1-v0-1-close-hygiene-requirements-md-traceability-flip-summary/03.1-03-PLAN.md` (Wave 3 plan)
-  - `src/artiscrapper/main.py` lines 240 + 354-362 (Limiter constructor + /search decorator stack — targets of the D-05 refactor)
+  - `.planning/phases/03.1-v0-1-close-hygiene-requirements-md-traceability-flip-summary/03.1-03-PLAN.md` (Deviation Note 2026-06-04 + Task 4 D-06 recipe)
+  - `src/artiscrapper/main.py` lines 235-262 (Pattern B module constants + Limiter) and lines 374-375 (decorators) — Pattern B reference for what the runtime log must report
+  - `tests/test_main.py` (propagation invariant — extend if Task 4 reveals additional drift surface)
+  - `compose.yml` + `.env` (Task 4 mutates API_RATE_PER_MINUTE then restores)
 
 ## Evolution
 
