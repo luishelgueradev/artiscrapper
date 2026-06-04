@@ -1,10 +1,12 @@
 ---
 phase: 3
 slug: robustness
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: accepted
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-03
+accepted: 2026-06-04
+accepted_by: phase-3.1-v0.1-close-hygiene
 ---
 
 # Phase 3 — Validation Strategy
@@ -98,4 +100,27 @@ Plans 03-01 and 03-02 must include the following test-infrastructure tasks befor
 - [ ] Feedback latency < 60s (quick), < 120s (full)
 - [ ] `nyquist_compliant: true` set in frontmatter (planner sets this once plans land all the test files)
 
-**Approval:** pending — planner finalises Task IDs and confirms wave assignment.
+**Approval:** accepted 2026-06-04 — phase-3.1-v0.1-close-hygiene
+
+---
+
+## Acceptance Rationale (2026-06-04)
+
+Phase 3 has both `nyquist_compliant: false` and `wave_0_complete: false` in the draft VALIDATION.md.
+
+Coverage evidence:
+- `03-VERIFICATION.md` status=passed: 6/6 success criteria + 20/20 D-NN decisions + 21/21 threats.
+- 10/10 HUMAN-UAT items pass (`03-HUMAN-UAT.md`).
+- 65 tests pass after Plan 03-02 (`pytest tests/ -q` returns 65 passed, 2 skipped).
+- The wave-0 test files exist:
+  - `tests/integration/test_metrics_endpoint.py` (OBS-07/D-13)
+  - `tests/integration/test_rate_limit.py` (D-02)
+  - `tests/test_auth.py` (D-01/D-03)
+  - `tests/test_sentry_init.py` (D-14/D-15/D-16/WRN-04)
+  - `tests/integration/test_challenge_backoff.py` (D-08/D-09)
+  - `tests/integration/test_degraded_mode.py` (LLM-06/ROADMAP-5)
+  - `tests/integration/test_catalog_extraction.py` (ROADMAP-6)
+
+`wave_0_complete: false` and `nyquist_compliant: false` were never updated during Phase 3 execution. The empirical evidence above shows the wave-0 work is **done**; the flags are stale draft markers.
+
+**Accepted:** Status `accepted`, nyquist_compliant `true`, wave_0_complete `true` (verified by file inventory above + `pytest tests/ -q` green).
