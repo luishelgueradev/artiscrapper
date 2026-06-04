@@ -8,10 +8,16 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    VERSION: str = "0.1.0"
+    VERSION: str = "0.1.1"
     CACHE_DB_PATH: str = "/app/cache.db"
     HEADLESS: bool = True
-    GOOGLE_MIN_INTERVAL_S: int = 60
+    # BROWSER-04 (Path B perf-audit 2026-06-04): minimum seconds between Google
+    # fetches inside a SINGLE /search request. Was 60 — empirically that adds
+    # ~60s of dead sleep to every cold path (the second of 2 paralleled fetches
+    # waits for the gate). Default bumped to 0 because the slowapi consumer
+    # rate-limit on /search is the primary defense against burst-induced Google
+    # blocks. See .planning/PERFORMANCE-AUDIT-2026-06-04.md §1, §4.
+    GOOGLE_MIN_INTERVAL_S: int = 0
     BROWSER_RECYCLE_AFTER: int = 200
     LLM_ROUTER_URL: str = "http://127.0.0.1:3210"
     LLM_ROUTER_BEARER_TOKEN: (
@@ -30,7 +36,14 @@ class Settings(BaseSettings):
     # Local-llms-router cancels at ~45s; qwen2.5:7b cold-load is ~50s on 16GB GPU.
     # KEEP_ALIVE=-1 on the router keeps it hot, so this almost never fires.
     LLM_COLD_LOAD_RETRY_AFTER_S: float = 30.0
-    LLM_CONCURRENCY: int = 4  # empirically confirmed Phase 1 (N=4: 4/4 200, mean=0.81s)
+    # LLM-03 (Path B perf-audit 2026-06-04): per-request concurrency against the
+    # local LLM router. Was 4 — empirically sem(4) and sem(2) give the same
+    # throughput against local-llms-router (speedup 1.47x in both cases), so 4
+    # left ~half the available router parallelism on the table. Default bumped
+    # to 8 to maximize throughput without saturating OpenWebUI / other shared
+    # consumers (sem 16 is the empirical maximum but reserves no headroom for
+    # the rest of the local-llms stack). See PERFORMANCE-AUDIT §1 / §4.
+    LLM_CONCURRENCY: int = 8
     LOG_JSON: bool = True
     LOG_LEVEL: str = "INFO"
 

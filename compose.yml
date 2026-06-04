@@ -11,9 +11,15 @@ services:
       - LLM_ROUTER_URL=${LLM_ROUTER_URL:-http://host.docker.internal:3210}
       - LLM_ROUTER_BEARER_TOKEN=${LLM_ROUTER_BEARER_TOKEN}
       - LLM_MODEL=${LLM_MODEL:-llama3.2:3b-instruct-q4_K_M}
-      - GOOGLE_MIN_INTERVAL_S=60
+      # BROWSER-04 (Path B 2026-06-04): 0 enables the 2 Google fetches inside
+      # a single /search request to run truly parallel. Was 60 (added ~60s to
+      # every cold path). slowapi consumer rate-limit is the primary defense.
+      - GOOGLE_MIN_INTERVAL_S=${GOOGLE_MIN_INTERVAL_S:-0}
       - BROWSER_RECYCLE_AFTER=200
-      - LLM_CONCURRENCY=4
+      # LLM-03 (Path B 2026-06-04): empirically optimal against local-llms-router.
+      # Was 4 — sem(4) ≈ sem(2) throughput. 8 maximizes use without saturating
+      # OpenWebUI / other shared local-llms consumers.
+      - LLM_CONCURRENCY=${LLM_CONCURRENCY:-8}
       - LOG_JSON=true
       - LOG_LEVEL=INFO
       # ── Phase 3 — Robustness ──
