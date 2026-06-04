@@ -171,8 +171,9 @@ async def lifespan(app: FastAPI):
     )
     log.info(
         "rate_limit_init",
-        per_min=settings.API_RATE_PER_MINUTE,
-        per_day=settings.API_RATE_PER_DAY,
+        per_minute=_RATE_LIMIT_PER_MINUTE,
+        per_day=_RATE_LIMIT_PER_DAY,
+        source="module_constants_from_settings",
     )
     # Plan 03-02 — D-19 empirical retest gate for the ChallengeBackoff
     # constants. These are hardcoded module-level (D-06 ROADMAP-lock —
@@ -231,6 +232,24 @@ app = FastAPI(
     title="artiscrapper",
     version=settings.VERSION,
 )
+
+# ── Phase 3.1 D-05 — slowapi rate limits, single source of truth (Pattern B) ──
+# These two constants are computed ONCE at module-load from settings. They flow
+# into BOTH (1) the @limiter.limit() decorators on POST /search AND (2) the
+# `rate_limit_init` log line in lifespan. Drift between log and runtime is
+# impossible by construction — there is exactly ONE place in the codebase
+# where the limit string is built. Override via .env requires
+# `compose up --force-recreate` (pydantic-settings reloads at process start).
+# DO NOT mutate at runtime — settings are import-time-frozen by design.
+#
+# Why Pattern B (decorator args) instead of Pattern A (Limiter default_limits):
+# slowapi 0.1.9 does NOT auto-apply default_limits to routes without an
+# @limiter.limit decorator unless SlowAPIMiddleware is installed, and
+# SlowAPIMiddleware crashes on first request in 0.1.9 + FastAPI
+# (AttributeError on 'TypeError'). See 03.1-03-PLAN.md Deviation Note
+# (2026-06-04) for the full empirical root-cause.
+_RATE_LIMIT_PER_MINUTE = f"{settings.API_RATE_PER_MINUTE}/minute"
+_RATE_LIMIT_PER_DAY = f"{settings.API_RATE_PER_DAY}/day"
 
 # ── Phase 3 — slowapi + /metrics ASGI sub-app mount ──
 # Registered BEFORE CorrelationIdMiddleware so the middleware (added last =
@@ -352,8 +371,8 @@ async def health_deep(
 
 
 @app.post("/search", response_model=SearchResponse)
-@limiter.limit("60/minute")
-@limiter.limit("10000/day")
+@limiter.limit(_RATE_LIMIT_PER_MINUTE)
+@limiter.limit(_RATE_LIMIT_PER_DAY)
 async def search(
     request: Request,
     response: Response,
@@ -368,8 +387,11 @@ async def search(
       - D-01/D-03: `verify_api_key` FastAPI dependency enforces X-API-Key
         (401 on missing/unknown). `request: Request` MUST stay first
         positional arg (slowapi requirement — 03-RESEARCH.md §C2).
-      - D-02: stacked `@limiter.limit("60/minute") + @limiter.limit("10000/day")`
-        first-to-fire wins → 429 with Retry-After header (slowapi 0.1.9).
+      - D-02 (Phase 3.1 D-05 refactor — Pattern B): stacked
+        `@limiter.limit(_RATE_LIMIT_PER_MINUTE) + @limiter.limit(_RATE_LIMIT_PER_DAY)`
+        — both decorator args are module-level constants derived from
+        `settings.API_RATE_PER_MINUTE/DAY` at module-load (single source of
+        truth). First-to-fire wins → 429 with Retry-After header (slowapi 0.1.9).
       - `response: Response` is declared so slowapi (with headers_enabled=True)
         can inject X-RateLimit-* + Retry-After headers into success responses.
         Without this param, slowapi raises "parameter `response` must be an
