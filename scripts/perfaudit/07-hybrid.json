@@ -1,0 +1,32 @@
+{
+  "n_total": 50,
+  "n_heuristic_decided": 38,
+  "n_llm_decided": 12,
+  "llm_phase_seconds": 7.61,
+  "tp": 38,
+  "fp": 3,
+  "tn": 5,
+  "fn": 4,
+  "precision": 0.9268,
+  "recall": 0.9048,
+  "accuracy": 0.86,
+  "f1": 0.9157,
+  "comparison_with_llm_pure": {
+    "llm_pure_precision": 0.925,
+    "llm_pure_recall": 0.881,
+    "llm_pure_latency_s_sem4_real_world": 35,
+    "llm_pure_latency_s_sem16_extrapolated": 16,
+    "hybrid_precision": 0.9268,
+    "hybrid_recall": 0.9048,
+    "hybrid_latency_s": 7.61,
+    "speedup_vs_llm_pure_sem4": 4.6
+  },
+  "comparison_with_heuristic_pure": {
+    "heuristic_pure_precision": 1.0,
+    "heuristic_pure_recall": 0.7857,
+    "hybrid_precision": 0.9268,
+    "hybrid_recall": 0.9048,
+    "recall_gain_pp": 11.9,
+    "precision_loss_pp": 7.3
+  }
+}
