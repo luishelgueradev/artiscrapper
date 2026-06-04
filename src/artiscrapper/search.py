@@ -405,6 +405,163 @@ def is_junk(url: str) -> bool:
 
 
 # ──────────────────────────────────────────
+# Heuristic pre-classifier (Path B perf fix, 2026-06-04)
+# ──────────────────────────────────────────
+#
+# Pre-classify candidates before the LLM curator. Splits into 3 buckets:
+#   - kept_high_conf  → bypass LLM, go directly to visit pass
+#   - ambiguous       → still need LLM decision
+#   - dropped         → never going to be a product, skip entirely
+#
+# Empirical basis (.planning/PERFORMANCE-AUDIT-2026-06-04.md §1, §4):
+# Against the 50 labeled Phase 1 fixtures (42 products / 8 non-products),
+# the LLM alone scores precision 92.5%, recall 88.1%. The heuristic alone
+# scores precision 100%, recall 78.6%. The hybrid (this function +
+# curate_candidates only on ambiguous) scores precision 92.7%, recall
+# 90.5%, F1 0.92 in 7.6s instead of 35s. The heuristic resolves 76% of
+# typical candidates; only the 24% ambiguous get LLM-classified, cutting
+# router load by 4x and cold path latency by ~30s.
+
+# Known commercial stores (AR-first). Suffix match against URL host —
+# `host.endswith(store)` catches subdomains (e.g., `listado.mercadolibre.com.ar`).
+KNOWN_STORES: frozenset[str] = frozenset(
+    {
+        # Mercado Libre regional
+        "mercadolibre.com.ar",
+        "mercadolibre.com",
+        "mercadolibre.com.mx",
+        "mercadolibre.cl",
+        "mercadolibre.com.uy",
+        # Amazon regional
+        "amazon.com.ar",
+        "amazon.com",
+        # AR retail majors
+        "garbarino.com",
+        "fravega.com",
+        "tiendamia.com",
+        "musimundo.com",
+        "carrefour.com.ar",
+        "cetrogar.com.ar",
+        "compraonline.com.ar",
+        "casaalbano.com.ar",
+        "naldo.com.ar",
+        # AR auto-parts specialists (relevant to Sánchez Repuestos)
+        "frogautopartes.com.ar",
+    }
+)
+
+# Title patterns that signal informational content (blog/guide/comparison),
+# never a product page. Lowercased before matching.
+BLOG_TITLE_PATTERNS: tuple[str, ...] = (
+    "como saber",
+    "cómo saber",
+    "qué elegir",
+    "que elegir",
+    "qué es",
+    "que es",
+    "diferencia entre",
+    "tabla de equivalencias",
+    "comparativa",
+    "cada cuánto",
+    "cada cuanto",
+    "guía",
+    "tutorial",
+    "review",
+    "opinión",
+    "opinion",
+    "vs.",
+)
+
+# File extensions that are never product pages.
+DOCUMENT_EXTENSIONS: tuple[str, ...] = (
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+)
+
+# URL substrings that signal forums/Q&A, never product pages.
+FORUM_PATTERNS: tuple[str, ...] = (
+    "reddit.com",
+    "/forum/",
+    "/foro/",
+    "quora.com",
+    "stackexchange.com",
+    "/forums/",
+)
+
+
+def heuristic_pre_classify(
+    candidates: list[dict],
+) -> tuple[list[dict], list[dict]]:
+    """
+    Split candidates into (kept_high_confidence, ambiguous).
+
+    Returns:
+        - ``kept_high_confidence``: candidates with price_in_card OR known store host.
+          Each tagged with ``_pre_class_reason`` for downstream logging/metrics.
+          Bypass the LLM curator entirely.
+        - ``ambiguous``: candidates without clear product signals. These still
+          need ``curate_candidates`` to decide.
+
+    Candidates matching any drop heuristic — junk-domain, forum, document
+    extension, blog-style title — are **dropped entirely** (not returned in
+    either bucket). The LLM would have descarted them with the same confidence.
+
+    Time complexity: O(n × constants). For typical 50-60 candidates: <5ms.
+
+    Empirical accuracy (vs 50 labeled Phase 1 candidates):
+        - Precision (hybrid w/ LLM): 92.7%
+        - Recall (hybrid w/ LLM):    90.5%
+        - F1 (hybrid w/ LLM):        0.92
+        - % resolved heuristically:  76% (only 24% sent to LLM)
+
+    See `.planning/PERFORMANCE-AUDIT-2026-06-04.md` for the benchmark.
+    """
+    kept: list[dict] = []
+    ambiguous: list[dict] = []
+
+    for cand in candidates:
+        url = cand.get("url") or ""
+        title = (cand.get("title") or "").lower()
+        url_lower = url.lower()
+
+        # Hard-drop signals — neither LLM nor visit could rescue these.
+        if is_junk(url):
+            continue
+        if any(p in url_lower for p in FORUM_PATTERNS):
+            continue
+        if url_lower.endswith(DOCUMENT_EXTENSIONS):
+            continue
+        if any(p in title for p in BLOG_TITLE_PATTERNS):
+            continue
+
+        # High-confidence keep signal #1: SERP cards already gave us a price.
+        if cand.get("price_in_card"):
+            kept.append({**cand, "_pre_class_reason": "price_in_card"})
+            continue
+
+        # High-confidence keep signal #2: host is a known commercial store.
+        # tldextract is not used here — simple suffix match is enough and
+        # avoids a second TLD-parsing pass per candidate (visit.py already
+        # does the rigorous one via tldextract for the MELI guard).
+        host = urlparse(url).netloc.lower()
+        if host.startswith("www."):
+            host = host[4:]
+        if any(host.endswith(store) for store in KNOWN_STORES):
+            kept.append({**cand, "_pre_class_reason": "known_store"})
+            continue
+
+        # Ambiguous — needs LLM judgment.
+        ambiguous.append(cand)
+
+    return kept, ambiguous
+
+
+# ──────────────────────────────────────────
 # Re-rank (SEARCH-07)
 # ──────────────────────────────────────────
 
