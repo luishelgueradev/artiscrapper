@@ -9,3 +9,6 @@ __pycache__/
 # Runtime artifacts (cache + logs)
 data/
 logs/
+
+# Playwright-cli session snapshots (ephemeral, per-investigation)
+.playwright-cli/

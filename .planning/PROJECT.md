@@ -18,6 +18,22 @@ Servicio HTTP que dada una query de búsqueda (e.g. `"filtro aire ranger"`) devu
 - **Resilience**: X-API-Key auth con `hmac.compare_digest` constant-time; stacked slowapi rate-limit `(60/min + 10000/day)` Pattern B (module constants → decorator argument + log line, drift impossible by construction); ChallengeBackoff state machine `min(60·2^retries, 3600)` con sqlite single-row persistence surviving `compose up --force-recreate`; 503+Retry-After when gate denies.
 - **Test surface**: 68 unit + 9 integration + 2 e2e (E2E=1 gated) = 79 tests; mypy --strict on `src/artiscrapper/` clean; ruff + format clean on production files. PRD §10 success criteria validated by operator UAT 2026-06-02.
 
+## Current Milestone: v0.2 Paridad Visual + Robustez del Parser
+
+**Goal:** Cerrar el gap empíricamente medido del parser SERP — el servicio actual pierde **+207% URLs reales** y **+74% productos con precio** frente a lo que un humano ve en la SERP de Google (medición transversal en 5 queries comerciales, ver `.planning/PARSER-VISUAL-PARITY-2026-06-05.md`). v0.2 cierra ese gap con cambios quirúrgicos (no rewrite), instala un harness continuo de paridad visual para detectar drift por rotación de Google, y limpia el carried tech debt de v0.1.
+
+**Target features:**
+- **Parser Visual Parity (Estrategia A)** — switch `wait_until="load"` en Cloak (recupera Shopping panel `pla-unit`), extractor `_extract_pla_unit()` aditivo al cascade actual, regex precio v2 (cierra bug `$410.420,311001`). Medición prototipada: +61% candidates, +207% URLs reales, +74% precios.
+- **Harness de paridad visual continua** — endpoint `GET /admin/parity/{query}` autenticado, dataset canónico de 12 queries cross-vertical, métricas Prometheus (`parity_coverage_pct`, `parity_pla_units_missed`, `parity_url_synthetic_ratio`), CI nightly que falla a coverage <75%.
+- **Paginación page 2** — fetchar `&start=10` en paralelo con page 1, dedupe por URL canónica antes del LLM curator. Expected gain: queries que ya saturan a 30 pla-units en page 1 (zapatillas, termotanque) ganan ~10-20 organic adicionales en page 2.
+- **SerpAPI como ground-truth opcional** — spike de 3 días que evalúa SerpAPI/Bright Data como fuente de ground-truth para el harness continuo (~$1/mes para 12 queries × 1/hora). Habilita medir drift sin cargar el VPS con tráfico de auditoría.
+- **Carried tech debt v0.1** — tldextract 5.3.1 → 6.x (rename `.registered_domain` → `.top_domain_under_public_suffix`), FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt.
+
+**Out of scope explícito v0.2:**
+- **Estrategia B (DOM-driven browser persistente)** — viola D8 invariant; el reporte cierra que las URLs reales del carousel solo son recuperables con JS-render adicional + clic simulado, costo arquitectónico no justificado.
+- **Resolución de URLs reales del carousel** — los 30 carousel items por query siguen con URL sintética `google.com/search?q=Title+site:Store`. Es lo mejor sin Estrategia B y el reporte demuestra que sigue siendo accionable para el consumidor.
+- **Phases 4-5 deferred-by-design** — Phase 4 (production-ops, Grafana/Loki) y Phase 5 (per-supplier adapters, residential proxy, SSE, multi-tenant) siguen gated en sus triggers originales. v0.2 NO los activa.
+
 ## Requirements
 
 ### Validated (v0.1)
@@ -35,13 +51,29 @@ All 55 v1 REQ-IDs SATISFIED per `.planning/milestones/v0.1-MILESTONE-AUDIT.md` (
 - ✓ **OBS-07** — `/metrics` ASGI sub-app + 6+ canonical artiscrapper_* families + Histograms — v0.1 (Phase 3)
 - ✓ **NF-01..04** — PRD §10 latency budget, respx mocks, mypy --strict, ruff clean — v0.1
 
-### Active (v0.2 — TBD)
+### Active (v0.2 Paridad Visual + Robustez del Parser)
 
-To be defined via `/gsd-new-milestone` at next planning session. Candidate triggers:
+Definido 2026-06-05 por evidencia empírica del reporte `.planning/PARSER-VISUAL-PARITY-2026-06-05.md`. REQ-IDs:
 
-- **Phase 4 candidates** (gated on prod telemetry): Grafana dashboards, Loki log aggregation, cache invalidation endpoint, OpenTelemetry tracing.
-- **Phase 5 candidates** (gated on growth): per-supplier adapters (Mayorista Frog first if requested), residential proxy (if Google IP-block >5%/day sustained), `/search/stream` SSE (if P95 cold >40s sustained 7+ days), multi-tenant auth (if 2nd consumer onboards).
-- **Carried tech debt**: tldextract 6.x migration, FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt.
+- **PARITY-01** — Switch `wait_until="load"` + timeout 15s en `browser.py` para que Cloak renderice el Shopping panel
+- **PARITY-02** — Extractor `_extract_pla_unit()` aditivo al cascade actual (pla-unit en `parse_serp` después del carousel loop)
+- **PARITY-03** — Regex precio v2 con cierre `,DD` obligatorio (cierra bug `$410.420,311001`)
+- **PARITY-04** — Fixtures HTML congeladas para `pla_unit_robotech.html` y `pla_unit_zapatillas.html` (+9 unit tests + 4 integration tests)
+- **PARITY-05** — Endpoint `GET /admin/parity/{query}` autenticado + métricas Prometheus mínimas
+- **HARNESS-01** — Dataset canónico de 12 queries cross-vertical (6 verticales × 2 niveles specificity)
+- **HARNESS-02** — Métricas Prometheus completas: `parity_coverage_pct{query}`, `parity_pla_units_missed{query}`, `parity_url_synthetic_ratio`
+- **HARNESS-03** — Sample asincrónico 1/10 en hot path productivo (overhead <50ms)
+- **HARNESS-04** — CI nightly job que corre el dataset y falla a coverage promedio <75%
+- **HARNESS-05** — Alertas WARN 75%, FAIL 50% sobre las métricas anteriores
+- **PAGE2-01** — Fetch page 2 (`&start=10`) en paralelo con page 1 vía Cloak
+- **PAGE2-02** — Dedupe por URL canónica antes del LLM curator (no duplicar entre pages)
+- **PAGE2-03** — Tests fixture-replay sobre page 2 (2 fixtures: organic-heavy + pla-heavy)
+- **SERPAPI-01** — Spike SerpAPI (3 días): cliente httpx + comparación con Cloak output sobre 12 queries
+- **SERPAPI-02** — Decisión documentada: integrar SerpAPI al harness continuo (~$1/mes) o defer indefinidamente
+- **TECHDEBT-01** — tldextract 5.3.1 → 6.x (rename `.registered_domain` → `.top_domain_under_public_suffix`)
+- **TECHDEBT-02** — FastAPI ORJSONResponse cleanup
+- **TECHDEBT-03** — httpx2 test migration
+- **TECHDEBT-04** — scripts/spike/ ruff debt cleanup
 
 ### Out of Scope (still valid post-v0.1)
 
@@ -128,4 +160,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-04 after v0.1 milestone (shipped)*
+*Last updated: 2026-06-05 — started milestone v0.2 (Paridad Visual + Robustez del Parser)*
