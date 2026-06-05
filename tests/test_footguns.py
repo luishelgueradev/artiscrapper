@@ -165,3 +165,28 @@ def test_metrics_endpoint_unprotected_by_design():
         "(ASGI sub-app), NOT a FastAPI route — otherwise slowapi + "
         "verify_api_key would silently wrap it. main.py grep output:\n" + result.stdout
     )
+
+
+def test_browser_fetch_serp_does_not_wait_until_load():
+    """Issue #1: `wait_until="load"` waits for ALL assets (imgs/fonts/scripts/
+    iframes) and times out under sustained N×2 pressure (4 concurrent contexts
+    when SEARCH_FETCH_PAGES=2), killing the browser singleton. The fix uses
+    `wait_until="domcontentloaded"` + a short best-effort wait for
+    `div.pla-unit` so the Shopping panel still renders before page.content().
+
+    Regressing to "load" reintroduces the TargetClosedError cascade observed
+    in the autonomous UAT 2026-06-05; this footgun guards against that.
+    """
+    # Match the call site (`page.goto(... wait_until="load" ...)`), not the
+    # explanatory comment that documents WHY we don't use it any more.
+    result = subprocess.run(
+        ["grep", "-Pn", r'page\.goto\([^)]*wait_until="load"', "src/artiscrapper/browser.py"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0, (
+        'Issue #1 regression: `page.goto(... wait_until="load" ...)` found in '
+        "src/artiscrapper/browser.py. Use `wait_until=\"domcontentloaded\"` + "
+        "`wait_for_selector('div.pla-unit', state='attached', timeout=2_500)` "
+        "instead. Grep output:\n" + result.stdout
+    )

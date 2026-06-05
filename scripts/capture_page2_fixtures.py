@@ -55,7 +55,16 @@ async def main() -> int:
             try:
                 page = await ctx.new_page()
                 url = URL_FMT.format(q=quote(query))
-                await page.goto(url, wait_until="load", timeout=15_000)
+                # Same pattern as browser.fetch_serp post-issue#1: DOM ready +
+                # best-effort pla-unit settling. Captures Shopping panel when
+                # present, doesn't hang on organic-only queries.
+                await page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+                try:
+                    await page.wait_for_selector(
+                        "div.pla-unit", state="attached", timeout=2_500
+                    )
+                except Exception:
+                    pass
                 html = await page.content()
 
                 # Strip base64 images + inline scripts (Phase 0.2.1 convention).

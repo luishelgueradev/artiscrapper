@@ -78,14 +78,30 @@ async def fetch_serp(browser, url: str, rate_limiter) -> tuple[str, str | None]:
     )
     try:
         page = await ctx.new_page()
-        # PARITY: wait_until="load" recupera el Shopping panel (div.pla-unit)
-        # y JSON-inline mappings que "domcontentloaded" corta antes de renderizar.
-        # Sin penalty p50 según Exp 2 del reporte (3.1s avg vs 5.6s con dom).
-        # Timeout bajado a 15s para fail-fast — siempre que Google sirva en tiempo
-        # razonable la SERP completa, "load" termina antes; queries lentas fallan
-        # rápido en vez de esperar 20s sin progreso.
-        # Ver .planning/PARSER-VISUAL-PARITY-2026-06-05.md §2.
-        await page.goto(url, wait_until="load", timeout=15_000)
+        # PARITY (issue #1): `wait_until="domcontentloaded"` + best-effort wait
+        # por `div.pla-unit` para reconciliar dos restricciones que `load` solo
+        # no logra mantener bajo carga:
+        #   1) Phase 0.2.1 PARITY-01 requiere que el Shopping panel renderice
+        #      antes de leer page.content() (`pla-unit` viene de un XHR lazy
+        #      post-DOM-ready, no del primer HTML).
+        #   2) `wait_until="load"` espera TODOS los assets (imgs/fonts/scripts/
+        #      iframes); bajo presión sostenida con N×2=4 contexts paralelos
+        #      (SEARCH_FETCH_PAGES=2), los 15s no alcanzan, page.goto raisea
+        #      TargetClosedError y mata el browser singleton — observado en la
+        #      UAT 0.2.3 (3rd call onwards) y reportado en issue #1.
+        # El compromiso: DOM ready (rápido, <2s en cold start verificado en
+        # UAT 0.2.3 — 411 KB de SERP válida) + wait_for_selector("div.pla-unit",
+        # state="attached") con timeout corto. Si la query trae Shopping panel,
+        # el selector resuelve en ~500-1500ms y seguimos; si no (organic-only
+        # como `libro programacion python`), el wait timea silenciosamente y
+        # procedemos con lo que el DOM ya tiene.
+        await page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+        try:
+            await page.wait_for_selector(
+                "div.pla-unit", state="attached", timeout=2_500
+            )
+        except Exception:
+            pass  # query sin Shopping panel — proceder con lo cargado
         block_reason = await _detect_block(page)
         html = await page.content()
         await page.close()
