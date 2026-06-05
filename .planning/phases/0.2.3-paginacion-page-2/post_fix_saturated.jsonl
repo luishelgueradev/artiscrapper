@@ -1,0 +1,5 @@
+{"query_id":"electro-espec","query":"termotanque rheem 80 litros electrico postfix-sat-231351","http_status":200,"elapsed_ms":7662,"candidates_total":0,"google_fetches":2,"block_detected":true,"llm_degraded":null}
+{"query_id":"ropa-espec","query":"zapatillas nike air max hombre 42 postfix-sat-231351","http_status":503,"elapsed_ms":11,"candidates_total":0,"google_fetches":2,"block_detected":true,"llm_degraded":null}
+{"query_id":"libro-broad","query":"libro programacion python postfix-sat-231351","http_status":503,"elapsed_ms":9,"candidates_total":0,"google_fetches":2,"block_detected":true,"llm_degraded":null}
+{"query_id":"electronica","query":"auriculares sony wh-1000xm5 postfix-sat-231351","http_status":503,"elapsed_ms":8,"candidates_total":0,"google_fetches":2,"block_detected":true,"llm_degraded":null}
+{"query_id":"pelota-deporte","query":"pelota futbol adidas n5 postfix-sat-231351","http_status":503,"elapsed_ms":9,"candidates_total":0,"google_fetches":2,"block_detected":true,"llm_degraded":null}
