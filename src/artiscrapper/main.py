@@ -24,7 +24,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from cloakbrowser import launch_async  # Phase 1 confirmed: this is the correct import path
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import ORJSONResponse
-from prometheus_client import Gauge, make_asgi_app
+from prometheus_client import make_asgi_app
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -382,20 +382,11 @@ async def health_deep(
 # ──────────────────────────────────────────
 
 
-# Minimum Prometheus metrics for parity drift detection (PARITY-05).
-# The full set (parity_coverage_pct, parity_pla_units_missed,
-# parity_url_synthetic_ratio) lands in Phase 0.2.2 — these two are the
-# minimum to flag "Google rotated div.pla-unit class".
-_parity_pla_in_html = Gauge(
-    "artiscrapper_parity_pla_units_in_html",
-    "Count of div.pla-unit found in the HTML for the last audited query",
-    ["query"],
-)
-_parity_pla_extracted = Gauge(
-    "artiscrapper_parity_pla_units_extracted",
-    "Count of pla-unit candidates extracted by the parser for the last audited query",
-    ["query"],
-)
+# Parity audit gauges are declared in metrics.py alongside the other
+# Prometheus families (Counter/Histogram), where the project's collector
+# unregistration pattern lives. importing them here keeps main.py focused
+# on routing and main.py importable under importlib.reload (test_sentry_init).
+from .metrics import parity_pla_extracted, parity_pla_in_html  # noqa: E402
 
 # Recognise canonical store-id URL patterns: /p/MLA*, /up/MLAU*, /itm/*, /dp/<10-char ASIN>.
 _CANON_URL_RE = re.compile(
@@ -472,8 +463,8 @@ async def admin_parity(
     # Cap label cardinality to keep Prometheus storage bounded. Truncated query
     # is fine for dashboarding; the response still includes the full query.
     label = query[:80]
-    _parity_pla_in_html.labels(query=label).set(len(pla_nodes))
-    _parity_pla_extracted.labels(query=label).set(len(pla_extracted))
+    parity_pla_in_html.labels(query=label).set(len(pla_nodes))
+    parity_pla_extracted.labels(query=label).set(len(pla_extracted))
 
     drift: list[str] = []
     if len(pla_nodes) > 0 and len(pla_extracted) == 0:

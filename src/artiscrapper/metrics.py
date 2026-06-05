@@ -30,6 +30,7 @@ from prometheus_client import (
     PROCESS_COLLECTOR,
     REGISTRY,
     Counter,
+    Gauge,
     Histogram,
 )
 
@@ -85,6 +86,22 @@ visit_elapsed = Histogram(
     "Visit pass latency per stage",
     ["stage"],  # fetch | extract | classify
     buckets=VISIT_BUCKETS,
+)
+
+# ── Parity audit gauges (Phase 0.2.1 — PARITY-05) ──
+# Minimum metrics for visual-parity drift detection. The full set
+# (parity_coverage_pct, parity_pla_units_missed, parity_url_synthetic_ratio)
+# lands in Phase 0.2.2 along with the 12-query dataset + CI nightly job.
+# These two are scraped from the /admin/parity/{query} endpoint.
+parity_pla_in_html = Gauge(
+    "artiscrapper_parity_pla_units_in_html",
+    "Count of div.pla-unit found in the HTML for the last audited query",
+    ["query"],
+)
+parity_pla_extracted = Gauge(
+    "artiscrapper_parity_pla_units_extracted",
+    "Count of pla-unit candidates extracted by the parser for the last audited query",
+    ["query"],
 )
 
 
