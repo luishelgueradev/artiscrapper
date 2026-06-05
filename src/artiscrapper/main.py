@@ -727,23 +727,46 @@ async def search(
                 headers={"Retry-After": str(retry_after)},
             )
 
-        # ── [2] Google fetch: parallel A (query) + B (query + mercadolibre) ──
+        # ── [2] Google fetch: N pages × 2 (meli/non-meli) in parallel ──
+        # Phase 0.2.3 PAGE2-01: was a hardcoded 2-fetch gather; now loops
+        # N = settings.SEARCH_FETCH_PAGES pages × 2 URLs (meli/non-meli) so
+        # production picks up shopping-panel results beyond the 30-pla cap
+        # on page 1. Default N=2 → 4 fetches per /search. Flip
+        # SEARCH_FETCH_PAGES=1 in env to revert to v0.2.2 single-page
+        # behavior without a redeploy. All-or-nothing: a single fetch
+        # raising aborts the whole /search, matching prior 2-fetch
+        # semantics (partial-success is out of scope; see CONTEXT D-06).
         browser = request.app.state.browser
         rate_limiter = request.app.state.rate_limit
+        N = settings.SEARCH_FETCH_PAGES
 
-        url_a = build_serp_url(body.query, meli=False)
-        url_b = build_serp_url(body.query, meli=True)
+        fetch_coros = []
+        for page in range(1, N + 1):
+            for meli in (False, True):
+                fetch_coros.append(
+                    fetch_serp(
+                        browser,
+                        build_serp_url(body.query, meli=meli, page=page),
+                        rate_limiter,
+                    )
+                )
 
-        html_a, block_a = "", None
-        html_b, block_b = "", None
+        html_a, html_b = "", ""
+        htmls: list[str] = []
+        blocks: list[str | None] = []
         block_detected = False
 
         try:
-            (html_a, block_a), (html_b, block_b) = await asyncio.gather(
-                fetch_serp(browser, url_a, rate_limiter),
-                fetch_serp(browser, url_b, rate_limiter),
-            )
-            request.app.state.browser_uses += 2
+            fetch_results = await asyncio.gather(*fetch_coros)
+            request.app.state.browser_uses += len(fetch_coros)
+            htmls = [r[0] for r in fetch_results]
+            blocks = [r[1] for r in fetch_results]
+            # Page-1 HTMLs are at index 0 (non-meli) and 1 (meli) — these
+            # flow to the cache (set_cached signature unchanged: D-09) and
+            # to the parity sample (D-10). Page 2+ HTMLs are kept only
+            # in-memory for parsing.
+            html_a = htmls[0] if len(htmls) >= 1 else ""
+            html_b = htmls[1] if len(htmls) >= 2 else ""
         except Exception as exc:
             log.warning("google_fetch_failed", error=str(type(exc).__name__))
             elapsed_ms = int((time.time() - t_start) * 1000)
@@ -757,10 +780,10 @@ async def search(
                 ),
             )
 
-        # ── [3] detect_block ──
-        if block_a or block_b:
+        # ── [3] detect_block — any blocked fetch among the N*2 wins ──
+        block_reason = next((b for b in blocks if b), None)
+        if block_reason:
             block_detected = True
-            block_reason = block_a or block_b
             log.warning("google_fetch_blocked", reason=block_reason)
             # D-11 bridge: dual-write to dataclass + prometheus Counter.
             inc_block_detected(block_reason)  # OBS-06
@@ -789,12 +812,13 @@ async def search(
                 ),
             )
 
-        # ── [4] parse_serp on both results ──
-        candidates_a = parse_serp(html_a) if html_a else []
-        candidates_b = parse_serp(html_b) if html_b else []
+        # ── [4] parse_serp on every fetched page (D-07) ──
+        all_candidates: list[dict] = []
+        for h in htmls:
+            if h:
+                all_candidates.extend(parse_serp(h))
 
         # ── [5] merge + dedupe + junk-domain blocklist ──
-        all_candidates = candidates_a + candidates_b
         all_candidates = dedupe(all_candidates)
         all_candidates = [c for c in all_candidates if not is_junk(c["url"])]
 
@@ -986,7 +1010,7 @@ async def search(
             results=results,
             metadata=Metadata(
                 elapsed_ms=elapsed_ms,
-                google_fetches=2,
+                google_fetches=len(htmls),
                 candidates_total=candidates_total,
                 llm_filtered_out=llm_filtered_out,
                 visited=visited_count,
