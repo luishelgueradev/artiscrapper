@@ -65,9 +65,9 @@ Definido 2026-06-05 por evidencia empírica del reporte `.planning/PARSER-VISUAL
 - **HARNESS-03** — Sample asincrónico 1/10 en hot path productivo (overhead <50ms)
 - **HARNESS-04** — CI nightly job que corre el dataset y falla a coverage promedio <75%
 - **HARNESS-05** — Alertas WARN 75%, FAIL 50% sobre las métricas anteriores
-- **PAGE2-01** — Fetch page 2 (`&start=10`) en paralelo con page 1 vía Cloak
-- **PAGE2-02** — Dedupe por URL canónica antes del LLM curator (no duplicar entre pages)
-- **PAGE2-03** — Tests fixture-replay sobre page 2 (2 fixtures: organic-heavy + pla-heavy)
+- ✓ **PAGE2-01** — Fetch page 2 (`&start=10`) en paralelo con page 1 vía Cloak — v0.2.3 (2026-06-05; runtime smoke pending operator)
+- ✓ **PAGE2-02** — Dedupe por URL canónica antes del LLM curator (no duplicar entre pages) — v0.2.3 (2026-06-05)
+- ✓ **PAGE2-03** — Tests fixture-replay sobre page 2 (2 fixtures: organic-heavy + pla-heavy) — v0.2.3 (2026-06-05)
 - **SERPAPI-01** — Spike SerpAPI (3 días): cliente httpx + comparación con Cloak output sobre 12 queries
 - **SERPAPI-02** — Decisión documentada: integrar SerpAPI al harness continuo (~$1/mes) o defer indefinidamente
 - **TECHDEBT-01** — tldextract 5.3.1 → 6.x (rename `.registered_domain` → `.top_domain_under_public_suffix`)
@@ -160,4 +160,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-05 — started milestone v0.2 (Paridad Visual + Robustez del Parser)*
+*Last updated: 2026-06-05 — Phase 0.2.3 (Paginación Page 2) shipped; PAGE2-01/02/03 satisfied; runtime smoke deferred to operator UAT*
