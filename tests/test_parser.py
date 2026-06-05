@@ -199,3 +199,127 @@ def test_dedupe():
     urls = [c["url"] for c in deduped]
     # All canonical URLs should be unique
     assert len(set(urls)) == len(urls), "Deduped list has duplicate canonical URLs"
+
+
+# ──────────────────────────────────────────
+# Phase 0.2.1 — pla-unit extractor tests (PARITY-02)
+# ──────────────────────────────────────────
+
+from src.artiscrapper.search import _extract_pla_unit, PLA_SELECTORS  # noqa: E402
+from selectolax.parser import HTMLParser  # noqa: E402
+
+
+def _load_fixture(name: str) -> str:
+    return (FIXTURES_DIR / name).read_text()
+
+
+def test_pla_unit_extracts_4_products_from_robotech_fixture():
+    """Wave-0: robotech fixture has 4 pla-unit cards with MELI canonical URLs.
+    Frozen 2026-06-05 from /tmp/robotech-serp.html (Google auction-volatile;
+    a re-capture of the same query may return 0 or N pla-units).
+    """
+    html = _load_fixture("pla_unit_robotech.html")
+    tree = HTMLParser(html)
+    extracted = [_extract_pla_unit(n) for n in tree.css("div.pla-unit")]
+    extracted = [c for c in extracted if c]
+    assert len(extracted) >= 4, f"Expected >=4 pla-units, got {len(extracted)}"
+    assert all("mercadolibre.com.ar" in c["url"] for c in extracted)
+    assert all(c["has_price"] for c in extracted)
+
+
+def test_pla_unit_extracts_30_products_from_zapatillas_fixture():
+    """Wave-0: zapatillas fixture has 30+ pla-unit cards across diverse stores.
+    Validates the extractor works for non-MELI stores (sporting, nike,
+    stockcenter, etc.) without MELI-specific hardcoding.
+    """
+    html = _load_fixture("pla_unit_zapatillas.html")
+    tree = HTMLParser(html)
+    extracted = [_extract_pla_unit(n) for n in tree.css("div.pla-unit")]
+    extracted = [c for c in extracted if c]
+    assert len(extracted) >= 30, f"Expected >=30 pla-units, got {len(extracted)}"
+    # Diverse stores: not all MELI
+    stores = {c["store_hint"] for c in extracted if c.get("store_hint")}
+    assert len(stores) >= 3, f"Expected diverse stores, got {stores}"
+
+
+def test_pla_unit_no_aclk_urls():
+    """The /aclk? redirect <a> is a display:none tracking pixel; extractor must skip it."""
+    html = _load_fixture("pla_unit_robotech.html")
+    tree = HTMLParser(html)
+    extracted = [_extract_pla_unit(n) for n in tree.css("div.pla-unit")]
+    extracted = [c for c in extracted if c]
+    for c in extracted:
+        assert "/aclk?" not in c["url"], f"pla-unit returned aclk URL: {c['url']}"
+        assert c["url"].startswith("http"), f"pla-unit URL not http: {c['url']}"
+
+
+def test_pla_unit_sponsored_flag():
+    """All pla-units carry 'sponsored' + 'pla_unit' flags for downstream policy."""
+    html = _load_fixture("pla_unit_robotech.html")
+    tree = HTMLParser(html)
+    extracted = [_extract_pla_unit(n) for n in tree.css("div.pla-unit")]
+    extracted = [c for c in extracted if c]
+    for c in extracted:
+        assert "pla_unit" in c["flags"]
+        assert "sponsored" in c["flags"]
+
+
+def test_pla_selectors_exported():
+    """Verify PLA_SELECTORS is a non-empty list with the canonical container selector."""
+    assert PLA_SELECTORS, "PLA_SELECTORS must be non-empty"
+    assert "div.pla-unit" in PLA_SELECTORS
+
+
+# ──────────────────────────────────────────
+# Phase 0.2.1 — _PRICE_RE v2 tests (PARITY-03)
+# ──────────────────────────────────────────
+
+import pytest  # noqa: E402
+from src.artiscrapper.search import _PRICE_RE, _extract_commercial_signals  # noqa: E402
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Threezero figura $410.420,311001hobbies.es", "$410.420,31"),
+    ("Yr-052F $\xa01.397.000,00 ahora", "$\xa01.397.000,00"),
+    ("$45.885,00x 6Tigre.com.ar", "$45.885,00"),
+    ("Precio: $5.000,00 ahora", "$5.000,00"),
+    ("$ 12.345,67/mes x 6 cuotas", "$ 12.345,67"),
+    ("Total $920.000,00 fin", "$920.000,00"),
+])
+def test_price_regex_matches_normal_ar_format(text, expected):
+    m = _PRICE_RE.search(text)
+    assert m is not None, f"No match in {text!r}"
+    assert m.group(0) == expected, f"Got {m.group(0)!r}, expected {expected!r}"
+
+
+def test_price_regex_no_bleed_into_store_digits():
+    """Bug regression: text '$410.420,311001hobbies.es' must NOT match '$410.420,311001'.
+    Real-world source: carousel item
+      'threezero Figura a escala 1:6 de Robo-Dou$ 410.420,311001hobbies.es'
+    """
+    text = "threezero Figura a escala 1:6 de Robo-Dou$\xa0410.420,311001hobbies.esy más5,0(2)"
+    m = _PRICE_RE.search(text)
+    assert m is not None
+    assert m.group(0).rstrip() == "$\xa0410.420,31", f"Bleeding bug back: {m.group(0)!r}"
+
+
+def test_price_regex_handles_ars_integer():
+    """ARS without decimals (legacy AR format)."""
+    m = _PRICE_RE.search("ARS 5000")
+    assert m is not None
+    assert m.group(0) == "ARS 5000"
+
+
+def test_price_regex_handles_us_dollar_integer():
+    """U$S without decimals (legacy format)."""
+    m = _PRICE_RE.search("U$S 5000")
+    assert m is not None
+    assert m.group(0) == "U$S 5000"
+
+
+def test_price_regex_filtered_by_short_digit_count():
+    """'$5' is too short — _extract_commercial_signals must filter by digits >= 3.
+    The new regex pattern won't even match $5 (requires at least 3 digits).
+    """
+    sigs = _extract_commercial_signals("hola $5 chau")
+    assert "price_in_card" not in sigs, f"Short price not filtered: {sigs}"
