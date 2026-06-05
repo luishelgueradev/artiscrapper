@@ -51,6 +51,16 @@ CAROUSEL_SELECTORS = [
     "div.Ez5pwe",  # carousel (Phase 1 fixtures confirmed present)
     "g-scrolling-carousel div[role='listitem']",
 ]
+# PARITY-02: Shopping panel ads (Google PLA = Product Listing Ads). Aditivo al
+# organic + carousel — los pla-units sponsoreados traen URL canonical real
+# (no sintética) y precio cierto, y son el bloque de mayor pérdida en el parser
+# original (medición Exp 1-3, ver reporte). Selector contenedor `div.pla-unit`
+# es semántico — los selectores INTERNOS (VbBaOe, UsGWMe, OkcyVb) son
+# obfuscados y pueden rotar trimestralmente; cuando lo hagan, _extract_pla_unit
+# retorna None silenciosamente y el parser sigue sirviendo organic+carousel.
+PLA_SELECTORS = [
+    "div.pla-unit",
+]
 
 # ──────────────────────────────────────────
 # Regex-based commercial-data extraction
@@ -255,6 +265,64 @@ def _extract_carousel(node) -> dict | None:
         if key in signals:
             candidate[key] = signals[key]
     return candidate
+
+
+def _extract_pla_unit(node) -> dict | None:
+    """
+    Extract a candidate dict from a Google Shopping pla-unit cell (PARITY-02).
+
+    pla-unit = sponsored ad slot. Características distintivas vs carousel:
+    - URL canonical real (`mercadolibre.com.ar/.../p/MLA*`, `nike.com.ar/...`),
+      NO sintetizada como en `_synthesize_carousel_url`.
+    - Precio principal en `<span class="VbBaOe">$X.XXX,XX</span>`.
+    - Store hint en `<div class="UsGWMe">` (aria-label `De {store}`).
+    - Cuota mensual opcional en `<div class="OkcyVb">` (`$X durante 6...`).
+    - El título vive en `[role=heading]`, NO en aria-label del `<a>` que
+      Google deja vacío (` por  de Mercadolibre.com.ar`).
+
+    Hay dos `<a>` por cell:
+    - `/aclk?...` — display:none tracking pixel; ignorar.
+    - URL real al producto con merchant params (matt_tool=, utm_source=, etc.).
+
+    Returns None si no encontramos título o URL real (selector rotation, HTML
+    parcial). El parser sigue funcionando con organic + carousel; el bloque
+    pla-unit es opcional, no blocking.
+    """
+    title_el = node.css_first("[role=heading]")
+    title = title_el.text(strip=True) if title_el else None
+
+    href = None
+    for a in node.css("a[href]"):
+        h = a.attributes.get("href", "")
+        if h.startswith("http") and "/aclk?" not in h:
+            # selectolax devuelve URLs con `&amp;` HTML-encoded; cortamos al
+            # primer & para tener el path + primer query param (suficiente
+            # para identificar el producto). Si se necesita la query completa,
+            # usar `html.unescape(h)`.
+            href = h.split("&amp;")[0]
+            break
+    if not href or not title or "google.com" in href:
+        return None
+
+    price_el = node.css_first("span.VbBaOe")
+    price = price_el.text(strip=True).replace("\xa0", "") if price_el else None
+
+    store_el = node.css_first("div.UsGWMe")
+    store = store_el.text(strip=True) if store_el else None
+
+    inst_el = node.css_first("div.OkcyVb")
+    inst = inst_el.text(strip=True).replace("\xa0", "") if inst_el else None
+
+    return {
+        "url": href,
+        "title": title,
+        "snippet": None,
+        "price_in_card": price,
+        "has_price": bool(price),
+        "store_hint": store,
+        "installments": inst,
+        "flags": ["pla_unit", "sponsored"],
+    }
 
 
 def _extract_by_h3(tree: HTMLParser) -> list[dict]:
