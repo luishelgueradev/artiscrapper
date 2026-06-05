@@ -36,6 +36,12 @@ services:
       # D-14: empty default ⇒ Sentry SDK init is skipped. Set in production
       # only; never set in dev/test (PRD: off by default).
       - SENTRY_DSN=${SENTRY_DSN:-}
+      # ── Phase 0.2.3 — Paginación Page 2 ──
+      # PAGE2-01 (2026-06-05): how many SERP pages /search fetches per request.
+      # Each page = 2 browser contexts (one for the non-meli URL, one for the
+      # +mercadolibre URL). Default 2 (4 total contexts/request). Cap 3.
+      # Flip to 1 for the v0.2.2 single-page rollback without a redeploy.
+      - SEARCH_FETCH_PAGES=${SEARCH_FETCH_PAGES:-2}
     extra_hosts:
       # Make host.docker.internal resolve on Linux Docker (without Docker Desktop).
       # No-op on Docker Desktop where it's already wired by default.
