@@ -60,8 +60,23 @@ CAROUSEL_SELECTORS = [
 
 # AR price formats: $5.000,00 / $ 5.000,00 / $18.032,30 / ARS 5000 / U$S 5000.
 # NBSP (\xa0) shows up between '$' and digits in Google's HTML — strip during normalize.
+#
+# Bug fix (0.2.1 / PARITY-03): the prior pattern `[\d](?:[\d.,]*\d)?` is greedy
+# and absorbs trailing digits when a store name with digits is concatenated
+# without a separator. Real-world failure case in carousel text:
+#   "threezero Figura ... Robo-Dou$ 410.420,311001hobbies.es" → matched
+#   "$ 410.420,311001" instead of the correct "$ 410.420,31".
+# The v2 pattern requires `,DD` closure (mandatory 2 decimals for AR prices
+# with thousands) or an integer with negative-lookahead (for legacy ARS 5000
+# / U$S 5000 formats without decimals). Validated against 10 cases in the
+# reporte (.planning/PARSER-VISUAL-PARITY-2026-06-05.md §7 Patch 2).
 _PRICE_RE = re.compile(
-    r"(?:\$|ARS|U\$S)\s?[\d](?:[\d.,]*\d)?",
+    r"(?:\$|ARS|U\$S)\s?(?:&nbsp;)?\s?"
+    r"(?:"
+    r"[1-9]\d{0,2}(?:\.\d{3})*,\d{2}"  # $1.397.000,00 / $5.000,00 (closes at ,DD)
+    r"|"
+    r"[1-9]\d{2,7}(?![\d.,])"  # ARS 5000 / U$S 5000 (integer, no decimals)
+    r")",
     re.IGNORECASE,
 )
 # Installment pattern: "$4.056,97/mes x 6" or "x 6 cuotas de $4.056,97 sin interés".
