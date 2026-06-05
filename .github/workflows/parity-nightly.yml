@@ -1,0 +1,91 @@
+name: Parity nightly audit
+
+# Triggers:
+#   - schedule: 3am UTC = midnight ART (low-traffic window). Switch to
+#     "0 14 * * *" (midday ART) if Google nightly A/B testing skews the
+#     baseline for the early-morning window.
+#   - workflow_dispatch: manual run from the Actions UI for spot checks.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Distinct API key from production so rate-limit + audit logs are
+      # filterable. Defined as a repo secret in Settings → Secrets and
+      # variables → Actions.
+      ARTISCRAPPER_NIGHTLY_KEY: ${{ secrets.ARTISCRAPPER_NIGHTLY_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify secret present
+        run: |
+          if [ -z "$ARTISCRAPPER_NIGHTLY_KEY" ]; then
+            echo "::error::ARTISCRAPPER_NIGHTLY_KEY secret missing — set it in Settings → Secrets → Actions"
+            exit 1
+          fi
+          echo "Secret is present (length=${#ARTISCRAPPER_NIGHTLY_KEY})"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Install Python deps (for the runner script + yaml)
+        run: uv sync --locked
+
+      - name: Build container
+        env:
+          # Pass the nightly key through to the running container so it
+          # accepts our X-API-Key on /admin/parity. LLM_ROUTER_BEARER_TOKEN
+          # is required by lifespan but not used for parity audits — give
+          # it an arbitrary placeholder.
+          API_KEYS: "${{ secrets.ARTISCRAPPER_NIGHTLY_KEY }}"
+          LLM_ROUTER_BEARER_TOKEN: "ci-nightly-placeholder"
+        run: docker compose build
+
+      - name: Start container
+        env:
+          API_KEYS: "${{ secrets.ARTISCRAPPER_NIGHTLY_KEY }}"
+          LLM_ROUTER_BEARER_TOKEN: "ci-nightly-placeholder"
+        run: docker compose up -d
+
+      - name: Wait for healthy
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fs http://localhost:8001/health > /dev/null 2>&1; then
+              echo "Healthy after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Container did not become healthy within 90s"
+          docker compose logs --tail=200
+          exit 1
+
+      - name: Run dataset
+        run: |
+          .venv/bin/python scripts/run_parity_nightly.py \
+            --dataset tests/fixtures/parity-dataset.yaml \
+            --endpoint http://localhost:8001/admin/parity \
+            --threshold 75 \
+            --api-key "$ARTISCRAPPER_NIGHTLY_KEY" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Teardown
+        if: always()
+        run: docker compose down --volumes
