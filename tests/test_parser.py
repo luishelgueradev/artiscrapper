@@ -327,3 +327,40 @@ def test_price_regex_filtered_by_short_digit_count():
     """
     sigs = _extract_commercial_signals("hola $5 chau")
     assert "price_in_card" not in sigs, f"Short price not filtered: {sigs}"
+
+
+# ── build_serp_url paging (Phase 0.2.3, PAGE2-01) ──
+
+
+def test_build_serp_url_page1_omits_start_param():
+    """Backward compat: page=1 (default) produces the same URL as v0.1.
+
+    A change here would break consumers replaying v0.1 fixtures against
+    v0.2.3 code, so we hard-pin the literal URL prefix.
+    """
+    u1 = build_serp_url("filtro aceite ford focus")
+    u_default = build_serp_url("filtro aceite ford focus", page=1)
+    assert u1 == u_default
+    assert "&start=" not in u1
+
+
+def test_build_serp_url_page2_emits_start_param():
+    """page=2 must add &start=10 per Google convention."""
+    u2 = build_serp_url("filtro aceite ford focus", page=2)
+    assert "&start=10" in u2
+    # And page=3 → start=20, page=10 → start=90
+    u3 = build_serp_url("q", page=3)
+    u10 = build_serp_url("q", page=10)
+    assert "&start=20" in u3
+    assert "&start=90" in u10
+
+
+def test_build_serp_url_rejects_page_zero_and_above_ten():
+    """Out-of-range page values raise ValueError."""
+    import pytest
+    with pytest.raises(ValueError):
+        build_serp_url("q", page=0)
+    with pytest.raises(ValueError):
+        build_serp_url("q", page=11)
+    with pytest.raises(ValueError):
+        build_serp_url("q", page=-1)
