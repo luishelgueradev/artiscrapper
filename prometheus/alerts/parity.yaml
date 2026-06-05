@@ -1,0 +1,67 @@
+# Phase 0.2.2 HARNESS-05 — Prometheus alert rules for the parity harness.
+#
+# These rules are NOT yet routed to a live Prometheus / Alertmanager — that's
+# Phase 4 production-ops territory. This file lives in the repo so the
+# Prometheus deployment that will eventually scrape /metrics from artiscrapper
+# can pick up the rules verbatim.
+#
+# Rule design:
+#   ParityCoverageWarn   — 30m rolling average dips below 75. Operations
+#                          team has time to investigate before paging.
+#   ParityCoverageFail   — 5m rolling average dips below 50. Hard
+#                          regression: Google probably rotated a container
+#                          class or upstream Cloak broke.
+#   ParityPlaUnitsMissed — Counter increases by >5 over 15m for any
+#                          single query. Specific to inner-class rotation
+#                          (VbBaOe / UsGWMe / OkcyVb / [role=heading]);
+#                          drift detector also flags this in the JSON
+#                          response, but the alert catches it under
+#                          sample-only conditions where nobody is hitting
+#                          /admin/parity manually.
+groups:
+  - name: artiscrapper-parity
+    interval: 1m
+    rules:
+      - alert: ParityCoverageWarn
+        expr: avg_over_time(artiscrapper_parity_coverage_pct[30m]) < 75
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "artiscrapper parity coverage degraded for {{ $labels.query }}"
+          description: |
+            Average parity coverage over 30min is {{ printf "%.0f" $value }}% (threshold 75).
+            Investigate via:
+              curl -H "X-API-Key: $PROD_KEY" "$ENDPOINT/admin/parity/{{ $labels.query }}"
+            Look for drift flags, low candidates_real_url, or pla_unit_in_html
+            > pla_unit_extracted.
+
+      - alert: ParityCoverageFail
+        expr: avg_over_time(artiscrapper_parity_coverage_pct[5m]) < 50
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "artiscrapper parity coverage CRITICAL for {{ $labels.query }}"
+          description: |
+            Coverage is {{ printf "%.0f" $value }}% — likely class rotation
+            by Google or upstream Cloak breaking. Investigate IMMEDIATELY.
+            Probable causes (in order of likelihood):
+              1. div.pla-unit container class rotated
+              2. inner obfuscated classes (VbBaOe, UsGWMe, OkcyVb) rotated
+              3. wait_until="load" upstream broke (cloakbrowser update)
+              4. Cloak hit a sustained CAPTCHA stream
+
+      - alert: ParityPlaUnitsMissed
+        expr: increase(artiscrapper_parity_pla_units_missed_total[15m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "artiscrapper detected pla-units missed by parser ({{ $labels.query }})"
+          description: |
+            {{ $value }} pla-units present in HTML but NOT extracted in
+            the last 15min. Strong signal Google rotated the internal
+            obfuscated classes (VbBaOe / UsGWMe / OkcyVb / [role=heading])
+            — the container is still found but extraction returns None.
+            Cross-check with the JSON response's drift field.
