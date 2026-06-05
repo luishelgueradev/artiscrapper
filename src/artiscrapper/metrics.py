@@ -104,6 +104,26 @@ parity_pla_extracted = Gauge(
     ["query"],
 )
 
+# ── Parity full metric set (Phase 0.2.2 — HARNESS-02) ──
+# coverage_pct is a Gauge because alerts want a current-state read.
+# pla_units_missed is a Counter because alerts use `increase()` over windows.
+# url_synthetic_ratio is a Gauge because the absolute value is the signal.
+parity_coverage_pct = Gauge(
+    "artiscrapper_parity_coverage_pct",
+    "Real-URL coverage percent (clamped 0..100) for the last audited query",
+    ["query"],
+)
+parity_pla_units_missed = Counter(
+    "artiscrapper_parity_pla_units_missed_total",
+    "Total pla-units present in HTML but missed by parser (drift signal)",
+    ["query"],
+)
+parity_url_synthetic_ratio = Gauge(
+    "artiscrapper_parity_url_synthetic_ratio",
+    "Fraction of candidates whose URL is a Google synthetic (carousel)",
+    ["query"],
+)
+
 
 # ── Legacy dataclass (D-11 — bridge, NOT replace) ──
 @dataclass
