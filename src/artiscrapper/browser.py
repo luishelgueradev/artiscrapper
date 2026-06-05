@@ -78,7 +78,14 @@ async def fetch_serp(browser, url: str, rate_limiter) -> tuple[str, str | None]:
     )
     try:
         page = await ctx.new_page()
-        await page.goto(url, wait_until="domcontentloaded", timeout=20_000)
+        # PARITY: wait_until="load" recupera el Shopping panel (div.pla-unit)
+        # y JSON-inline mappings que "domcontentloaded" corta antes de renderizar.
+        # Sin penalty p50 según Exp 2 del reporte (3.1s avg vs 5.6s con dom).
+        # Timeout bajado a 15s para fail-fast — siempre que Google sirva en tiempo
+        # razonable la SERP completa, "load" termina antes; queries lentas fallan
+        # rápido en vez de esperar 20s sin progreso.
+        # Ver .planning/PARSER-VISUAL-PARITY-2026-06-05.md §2.
+        await page.goto(url, wait_until="load", timeout=15_000)
         block_reason = await _detect_block(page)
         html = await page.content()
         await page.close()
