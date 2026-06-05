@@ -329,3 +329,76 @@ def test_parse_serp_page2_zapatillas_fixture():
         f"page2_zapatillas.html: only {len(real_url)}/{len(cands)} candidates "
         f"have a non-google URL."
     )
+
+
+# ──────────────────────────────────────────
+# Gap C — honest google_fetches on non-success paths
+# ──────────────────────────────────────────
+
+
+def test_google_fetches_is_zero_when_gather_raises(monkeypatch):
+    """Gap C: when asyncio.gather raises (e.g. TargetClosedError), the
+    response carries google_fetches=0 — NOT the pydantic default. Pre-fix
+    the response leaked the v0.1 hardcoded `=2` into total-failure paths,
+    making /metrics + consumer analytics dishonest."""
+
+    async def _exploding_fetch(browser, url, rate_limiter):
+        # Mirrors the prod failure shape from issue #1.
+        raise RuntimeError("simulated browser death (Gap C exception path)")
+
+    _exploding_fetch.call_log = []  # type: ignore[attr-defined]
+    _prepare_app(monkeypatch, pages=2, fetch_fake=_exploding_fetch)
+
+    with TestClient(app) as client:
+        _reset_challenge_state(_settings.CACHE_DB_PATH)
+        _cb._STATE = None
+        _reset_limiter()
+        resp = client.post(
+            "/search",
+            json={"query": "gapc-exception-path-probe"},
+            headers=API_HEADERS,
+        )
+
+    assert resp.status_code == 200, resp.text
+    metadata = resp.json()["metadata"]
+    assert metadata.get("google_fetches") == 0, (
+        f"Gap C: gather-raised response must report google_fetches=0; "
+        f"got {metadata.get('google_fetches')!r}. metadata={metadata}"
+    )
+    assert metadata.get("block_detected") is False, metadata
+
+
+def test_google_fetches_reports_len_htmls_on_block_detected(monkeypatch):
+    """Gap C: when a fetch succeeds in returning HTML that contains a
+    block marker, the block-detected response shape must report the
+    actual number of fetches that came back (len(htmls)), not the
+    pydantic default. The fetches DID happen — Google just served a
+    /sorry/ or interstitial page. Hiding that count made it harder to
+    correlate the block volume that triggered it."""
+    page1 = (FIXTURE_DIR / "pla_unit_robotech.html").read_text()
+
+    async def _blocking_fetch(browser, url, rate_limiter):
+        # block_reason non-None → triggers the block_detected branch
+        return page1, "sorry_redirect"
+
+    _blocking_fetch.call_log = []  # type: ignore[attr-defined]
+    _prepare_app(monkeypatch, pages=2, fetch_fake=_blocking_fetch)
+
+    with TestClient(app) as client:
+        _reset_challenge_state(_settings.CACHE_DB_PATH)
+        _cb._STATE = None
+        _reset_limiter()
+        resp = client.post(
+            "/search",
+            json={"query": "gapc-block-path-probe"},
+            headers=API_HEADERS,
+        )
+
+    assert resp.status_code == 200, resp.text
+    metadata = resp.json()["metadata"]
+    assert metadata.get("block_detected") is True, metadata
+    # 2 pages × 2 (meli/non-meli) = 4 fetches all returned HTML+block_reason
+    assert metadata.get("google_fetches") == 4, (
+        f"Gap C: block_detected response must report len(htmls)=4; "
+        f"got {metadata.get('google_fetches')!r}. metadata={metadata}"
+    )

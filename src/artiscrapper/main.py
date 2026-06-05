@@ -689,6 +689,7 @@ async def search(
                     elapsed_ms=elapsed_ms,
                     cache_hit=True,
                     candidates_total=len(cached.get("results", [])),
+                    google_fetches=0,  # Gap C: cache hit → 0 live Google fetches
                 ),
             )
 
@@ -718,6 +719,7 @@ async def search(
                     elapsed_ms=elapsed_ms,
                     cache_hit=False,
                     block_detected=True,
+                    google_fetches=0,  # Gap C: ChallengeBackoff denied before any fetch
                 ),
             )
             return Response(
@@ -777,6 +779,7 @@ async def search(
                     elapsed_ms=elapsed_ms,
                     cache_hit=False,
                     block_detected=False,
+                    google_fetches=0,  # Gap C: gather raised, no fetch returned HTML
                 ),
             )
 
@@ -809,6 +812,9 @@ async def search(
                     elapsed_ms=elapsed_ms,
                     cache_hit=False,
                     block_detected=True,
+                    # Gap C: some fetches DID return HTML — just at least one
+                    # was a block page. Honest count = htmls actually returned.
+                    google_fetches=len(htmls),
                 ),
             )
 

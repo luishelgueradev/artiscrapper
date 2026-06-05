@@ -40,7 +40,11 @@ class Candidate(BaseModel):
 class Metadata(BaseModel):
     # SEARCH-08: 8 required fields + block_detected (BROWSER-05) = 9 total
     elapsed_ms: int
-    google_fetches: int = 2
+    # PAGE2-01 (Gap C, 2026-06-05): default 0 — every code path that actually
+    # made fetches sets this explicitly via `len(htmls)`. Old default of 2
+    # leaked the v0.1 hardcoded count into exception / cache / 503 responses
+    # where no fetches happened, making metric/observability dishonest.
+    google_fetches: int = 0
     candidates_total: int = 0
     llm_filtered_out: int = 0
     visited: int = 0
