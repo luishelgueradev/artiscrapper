@@ -130,7 +130,7 @@
 | 5. Expansion | (deferred) | 0/TBD | Deferred-by-design | - |
 | 0.2.1. Parser Visual Parity | v0.2 | 0/2 (scaffolded) | Planned | - |
 | 0.2.2. Harness Paridad Continua | v0.2 | 0/TBD | Pending | - |
-| 0.2.3. Paginación Page 2 | v0.2 | 1/2 | In Progress | - |
+| 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Awaiting verify | - |
 | 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/TBD | Conditional | - |
 | 0.2.5. Carried Tech Debt v0.1 | v0.2 | 0/TBD | Pending | - |
 
