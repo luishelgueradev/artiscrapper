@@ -396,6 +396,21 @@ def parse_serp(html: str) -> list[dict]:
             candidates.extend(carousel_results)
             break
 
+    # PARITY-02: pla-unit pass (Google Shopping ads — sponsored).
+    # Additive al organic cascade y al carousel: NO los reemplaza, NO compite con
+    # ellos. La pla-unit es el bloque sponsoreado de mayor valor (URL canonical
+    # real, precio cierto). Dedupe interno por URL para evitar duplicar productos
+    # cuando el panel y un g-scrolling-carousel paralelo listan el mismo producto.
+    # El dedupe global (`dedupe()`) corre después y combina con organic+carousel.
+    # Ver .planning/PARSER-VISUAL-PARITY-2026-06-05.md §7 Patch 3.
+    pla_seen: set[str] = set()
+    for sel in PLA_SELECTORS:
+        for n in tree.css(sel):
+            c = _extract_pla_unit(n)
+            if c and c["url"] not in pla_seen:
+                pla_seen.add(c["url"])
+                candidates.append(c)
+
     return candidates
 
 
