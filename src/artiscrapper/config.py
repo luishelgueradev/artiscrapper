@@ -4,6 +4,7 @@ All tunable params via env vars with typed defaults.
 LLM_ROUTER_BEARER_TOKEN has NO default — startup fails without it (RESEARCH.md §Environment).
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -60,6 +61,21 @@ class Settings(BaseSettings):
     API_RATE_PER_DAY: int = 10000
     # D-14: empty → Sentry disabled (no init). Set in production compose only.
     SENTRY_DSN: str = ""
+    # Phase 0.2.2 HARNESS-03: fraction (0.0..1.0) of /search requests sampled
+    # for parity audit on the hot path. Each sampled request reuses the HTML
+    # already produced by the pipeline (no extra Cloak fetch) and runs the
+    # parser metric helper in a fire-and-forget bg task — overhead is
+    # <50ms p99 on a 1.5 MB SERP HTML. Set to 0.0 to disable the sample.
+    PARITY_SAMPLE_RATE: float = 0.1
+
+    @field_validator("PARITY_SAMPLE_RATE")
+    @classmethod
+    def _validate_parity_sample_rate(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError(
+                f"PARITY_SAMPLE_RATE must be in [0.0, 1.0], got {v!r}"
+            )
+        return v
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
