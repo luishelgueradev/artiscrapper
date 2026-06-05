@@ -12,7 +12,11 @@ DATASET_PATH = Path(__file__).parent / "fixtures" / "parity-dataset.yaml"
 def test_dataset_yaml_loads_and_validates_schema():
     """All 12 queries must carry the required schema fields with non-empty values."""
     d = yaml.safe_load(DATASET_PATH.read_text())
-    assert d["version"] == 1
+    # version bumps when baselines are recalibrated from a nightly run
+    # (v1 = initial 2026-06-05 with 7 placeholders; v2 = recalibrated from
+    # first nightly). The test only enforces presence + monotonicity, not
+    # a specific value.
+    assert isinstance(d["version"], int) and d["version"] >= 1
     assert isinstance(d["queries"], list)
     assert len(d["queries"]) == 12, f"Expected exactly 12 queries, got {len(d['queries'])}"
     required = {"id", "query", "vertical", "specificity", "min_expected_real_urls"}
