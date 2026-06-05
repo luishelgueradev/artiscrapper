@@ -84,9 +84,13 @@ def test_blocklist():
 
 
 def test_parse_serp_fixtures():
-    """SEARCH-04: Parser extracts candidates from all 10 Phase 1 SERP fixtures."""
-    fixture_files = sorted(glob.glob(str(FIXTURES_DIR / "*.html")))
-    assert len(fixture_files) == 10, f"Expected 10 SERP fixtures, got {len(fixture_files)}"
+    """SEARCH-04: Parser extracts candidates from all 10 Phase 1 SERP fixtures.
+    Phase 1 fixtures are named NN-<slug>.html (01..10). Later phases may add
+    fixtures with other naming conventions (e.g. pla_unit_*.html for 0.2.1
+    PARITY-04) — filter to Phase 1's numbered set so this test stays stable.
+    """
+    fixture_files = sorted(glob.glob(str(FIXTURES_DIR / "[0-9][0-9]-*.html")))
+    assert len(fixture_files) == 10, f"Expected 10 Phase 1 SERP fixtures, got {len(fixture_files)}"
 
     for filepath in fixture_files:
         name = os.path.basename(filepath)
