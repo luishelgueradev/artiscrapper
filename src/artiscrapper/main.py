@@ -14,6 +14,7 @@ Full 10-step POST /search pipeline wired in plan 02-02:
 import asyncio
 import re
 import time
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 import aiosqlite
@@ -386,7 +387,13 @@ async def health_deep(
 # Prometheus families (Counter/Histogram), where the project's collector
 # unregistration pattern lives. importing them here keeps main.py focused
 # on routing and main.py importable under importlib.reload (test_sentry_init).
-from .metrics import parity_pla_extracted, parity_pla_in_html  # noqa: E402
+from .metrics import (  # noqa: E402
+    parity_coverage_pct,
+    parity_pla_extracted,
+    parity_pla_in_html,
+    parity_pla_units_missed,
+    parity_url_synthetic_ratio,
+)
 
 # Recognise canonical store-id URL patterns: /p/MLA*, /up/MLAU*, /itm/*, /dp/<10-char ASIN>.
 _CANON_URL_RE = re.compile(
@@ -396,6 +403,94 @@ _CANON_URL_RE = re.compile(
 _HTML_PRICE_RE = re.compile(
     r"\$(?:&nbsp;|\xc2\xa0|\xa0|\s)?[1-9]\d{0,2}(?:\.\d{3})*,\d{2}"
 )
+
+# Phase 0.2.2 HARNESS-01 — load parity dataset once at module-import.
+# Keyed by the lowercased+stripped query string for O(1) baseline lookup
+# from both /admin/parity/{q} and the Plan 02 sample hot-path. Production
+# queries that don't match the canonical dataset get None for the
+# coverage_pct gauge but still update raw counts in the helper.
+import yaml  # noqa: E402
+
+_PARITY_DATASET_PATH = (
+    Path(__file__).parent.parent.parent / "tests" / "fixtures" / "parity-dataset.yaml"
+)
+_PARITY_DATASET: dict[str, dict] = {}
+try:
+    with _PARITY_DATASET_PATH.open() as _fh:
+        _ds = yaml.safe_load(_fh) or {}
+    for _entry in _ds.get("queries") or []:
+        _key = (_entry.get("query") or "").strip().lower()
+        if _key:
+            _PARITY_DATASET[_key] = _entry
+    log.info("parity_dataset_loaded", count=len(_PARITY_DATASET))
+except Exception as _exc:  # noqa: BLE001
+    log.warning("parity_dataset_load_failed", error=str(_exc))
+
+
+def _compute_parity_metrics(
+    query: str,
+    html: str,
+    candidates: list[dict],
+    pla_nodes_count: int,
+) -> dict:
+    """Compute and emit the 5 parity Prometheus families from an audit input.
+
+    Used by /admin/parity/{q} AND by Plan 02's sample hot-path task. Always
+    sets pla_in_html / pla_extracted / pla_units_missed / url_synthetic_ratio.
+    coverage_pct is set only when the query is in the canonical dataset.
+
+    Returns a `coverage` dict for inclusion in the JSON response:
+      {
+        "coverage_pct": float | None,
+        "pla_units_missed": int,
+        "url_synthetic_ratio": float,
+      }
+
+    `html` is currently unused in the metric formulas but is kept in the
+    signature so future drift detectors can compare HTML signals directly
+    without re-parsing.
+    """
+    del html  # not currently used; reserved for future detectors
+    label = query[:80]
+    pla_extracted_cands = [c for c in candidates if "pla_unit" in (c.get("flags") or [])]
+
+    # 1. pla_in_html + extracted (gauges existed since Phase 0.2.1)
+    parity_pla_in_html.labels(query=label).set(pla_nodes_count)
+    parity_pla_extracted.labels(query=label).set(len(pla_extracted_cands))
+
+    # 2. pla_units_missed counter (drift signal). Counter monotonic — we
+    # increment by the diff, never reset to "current state".
+    missed = max(0, pla_nodes_count - len(pla_extracted_cands))
+    if missed > 0:
+        parity_pla_units_missed.labels(query=label).inc(missed)
+
+    # 3. url_synthetic_ratio — carousel fraction over all candidates with URL.
+    cands_with_url = [c for c in candidates if c.get("url")]
+    synthetic = [
+        c for c in cands_with_url if "google.com/search" in (c.get("url") or "")
+    ]
+    ratio = len(synthetic) / len(cands_with_url) if cands_with_url else 0.0
+    parity_url_synthetic_ratio.labels(query=label).set(ratio)
+
+    # 4. coverage_pct — only when query has a baseline in the canonical dataset.
+    real_url_cands = [
+        c
+        for c in candidates
+        if c.get("url") and "google.com/search" not in (c.get("url") or "")
+    ]
+    entry = _PARITY_DATASET.get(query.strip().lower())
+    coverage_pct: float | None = None
+    if entry:
+        expected = entry.get("min_expected_real_urls")
+        if expected:
+            coverage_pct = min(100.0, 100.0 * len(real_url_cands) / float(expected))
+            parity_coverage_pct.labels(query=label).set(coverage_pct)
+
+    return {
+        "coverage_pct": coverage_pct,
+        "pla_units_missed": missed,
+        "url_synthetic_ratio": ratio,
+    }
 
 
 @app.get("/admin/parity/{query:path}")
@@ -460,11 +555,9 @@ async def admin_parity(
         if c.get("url") and "google.com/search" not in (c.get("url") or "")
     ]
 
-    # Cap label cardinality to keep Prometheus storage bounded. Truncated query
-    # is fine for dashboarding; the response still includes the full query.
-    label = query[:80]
-    parity_pla_in_html.labels(query=label).set(len(pla_nodes))
-    parity_pla_extracted.labels(query=label).set(len(pla_extracted))
+    # Phase 0.2.2: delegate all metric updates + coverage computation to the
+    # shared helper so /admin/parity and the sample hot-path stay in sync.
+    coverage_block = _compute_parity_metrics(query, html, cands, len(pla_nodes))
 
     drift: list[str] = []
     if len(pla_nodes) > 0 and len(pla_extracted) == 0:
@@ -488,6 +581,7 @@ async def admin_parity(
             "pla_unit_extracted": len(pla_extracted),
             "carousel_extracted": len(carousel_extracted),
         },
+        "coverage": coverage_block,
         "drift": drift,
     }
 
