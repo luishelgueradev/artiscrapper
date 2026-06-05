@@ -12,6 +12,7 @@ Full 10-step POST /search pipeline wired in plan 02-02:
 """
 
 import asyncio
+import re
 import time
 from contextlib import asynccontextmanager
 
@@ -23,7 +24,7 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from cloakbrowser import launch_async  # Phase 1 confirmed: this is the correct import path
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import ORJSONResponse
-from prometheus_client import make_asgi_app
+from prometheus_client import Gauge, make_asgi_app
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -372,6 +373,132 @@ async def health_deep(
     except Exception as exc:
         out["llm"] = f"fail:{type(exc).__name__}"
     return out
+
+
+# ──────────────────────────────────────────
+# GET /admin/parity/{query} — Phase 0.2.1 PARITY-05
+# Minimum harness for visual parity audits. The full harness (12-query
+# dataset + CI nightly + WARN/FAIL alerts) is Phase 0.2.2.
+# ──────────────────────────────────────────
+
+
+# Minimum Prometheus metrics for parity drift detection (PARITY-05).
+# The full set (parity_coverage_pct, parity_pla_units_missed,
+# parity_url_synthetic_ratio) lands in Phase 0.2.2 — these two are the
+# minimum to flag "Google rotated div.pla-unit class".
+_parity_pla_in_html = Gauge(
+    "artiscrapper_parity_pla_units_in_html",
+    "Count of div.pla-unit found in the HTML for the last audited query",
+    ["query"],
+)
+_parity_pla_extracted = Gauge(
+    "artiscrapper_parity_pla_units_extracted",
+    "Count of pla-unit candidates extracted by the parser for the last audited query",
+    ["query"],
+)
+
+# Recognise canonical store-id URL patterns: /p/MLA*, /up/MLAU*, /itm/*, /dp/<10-char ASIN>.
+_CANON_URL_RE = re.compile(
+    r"https?://[^\"'\s<>&\\]+(?:/(?:p/MLA|up/MLAU)\d+|/itm/\d+|/dp/[A-Z0-9]{10})"
+)
+# Match AR prices in raw HTML (with optional NBSP / &nbsp; entity).
+_HTML_PRICE_RE = re.compile(
+    r"\$(?:&nbsp;|\xc2\xa0|\xa0|\s)?[1-9]\d{0,2}(?:\.\d{3})*,\d{2}"
+)
+
+
+@app.get("/admin/parity/{query:path}")
+async def admin_parity(
+    request: Request,
+    query: str,
+    _api_key: str = Depends(verify_api_key),
+) -> dict:
+    """
+    Parity audit endpoint — fetch the Google SERP for {query}, run the current
+    parser, and compare against the raw HTML's measurable signals (price count,
+    canonical URL count, pla-unit container count). Helps detect drift caused
+    by Google class rotation or upstream changes to the SERP structure.
+
+    Auth: X-API-Key (same as /search). Phase 0.2.2 will gate this behind a
+    dedicated `admin_audit` role; for now any valid key may call.
+
+    Response shape:
+      {
+        "query": str,
+        "blocked": str | False,                       # block_reason or False
+        "html_metrics": {
+          "size_bytes": int,
+          "prices_unique": int,
+          "canonical_urls_in_html": int,
+          "pla_units_in_html": int,                   # `div.pla-unit` nodes
+        },
+        "parser_metrics": {
+          "candidates_total": int,
+          "candidates_with_price": int,
+          "candidates_real_url": int,                 # non-Google-search URLs
+          "pla_unit_extracted": int,
+          "carousel_extracted": int,
+        },
+        "drift": list[str],                           # flagged anomalies
+      }
+
+    This endpoint hits Cloak — it is NOT cached and counts against the
+    GoogleRateLimiter. Do not call it from a hot loop; intended for spot-audits
+    and the Phase 0.2.2 nightly job (sampling rate 1/hour expected).
+    """
+    from selectolax.parser import HTMLParser
+
+    browser = request.app.state.browser
+    rate_limiter = request.app.state.rate_limit
+    url = build_serp_url(query, meli=False)
+    html, block_reason = await fetch_serp(browser, url, rate_limiter)
+    if block_reason:
+        return {"query": query, "blocked": block_reason}
+
+    tree = HTMLParser(html)
+    pla_nodes = tree.css("div.pla-unit")
+    cands = parse_serp(html)
+    pla_extracted = [c for c in cands if "pla_unit" in (c.get("flags") or [])]
+    carousel_extracted = [c for c in cands if "carousel" in (c.get("flags") or [])]
+
+    prices_in_html = set(_HTML_PRICE_RE.findall(html))
+    canon_urls = {u.split("?")[0] for u in _CANON_URL_RE.findall(html)}
+    real_url_cands = [
+        c
+        for c in cands
+        if c.get("url") and "google.com/search" not in (c.get("url") or "")
+    ]
+
+    # Cap label cardinality to keep Prometheus storage bounded. Truncated query
+    # is fine for dashboarding; the response still includes the full query.
+    label = query[:80]
+    _parity_pla_in_html.labels(query=label).set(len(pla_nodes))
+    _parity_pla_extracted.labels(query=label).set(len(pla_extracted))
+
+    drift: list[str] = []
+    if len(pla_nodes) > 0 and len(pla_extracted) == 0:
+        # Container detected but no extraction — strong signal that the inner
+        # obfuscated classes (VbBaOe, UsGWMe, OkcyVb, [role=heading]) rotated.
+        drift.append("pla_unit_in_html_not_extracted")
+
+    return {
+        "query": query,
+        "blocked": False,
+        "html_metrics": {
+            "size_bytes": len(html),
+            "prices_unique": len(prices_in_html),
+            "canonical_urls_in_html": len(canon_urls),
+            "pla_units_in_html": len(pla_nodes),
+        },
+        "parser_metrics": {
+            "candidates_total": len(cands),
+            "candidates_with_price": sum(1 for c in cands if c.get("has_price")),
+            "candidates_real_url": len(real_url_cands),
+            "pla_unit_extracted": len(pla_extracted),
+            "carousel_extracted": len(carousel_extracted),
+        },
+        "drift": drift,
+    }
 
 
 # ──────────────────────────────────────────
