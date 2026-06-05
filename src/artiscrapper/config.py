@@ -77,6 +77,22 @@ class Settings(BaseSettings):
             )
         return v
 
+    # ── Phase 0.2.3 — Paginación Page 2 (PAGE2-01) ──
+    # Number of SERP pages fetched per /search call. Each page costs 2 Cloak
+    # browser contexts (one for the non-meli URL, one for +mercadolibre).
+    # Default 2 — adds ~25-40% latency p50 in exchange for +10-40 unique
+    # candidates on queries with shopping-panel saturation (electro, ropa,
+    # libro). Set to 1 to revert to v0.2.2 single-page behavior without a
+    # redeploy. Cap is 3 (BROWSER_RECYCLE_AFTER + CAPTCHA-risk safety).
+    SEARCH_FETCH_PAGES: int = 2
+
+    @field_validator("SEARCH_FETCH_PAGES")
+    @classmethod
+    def _validate_search_fetch_pages(cls, v: int) -> int:
+        if not 1 <= v <= 3:
+            raise ValueError(f"SEARCH_FETCH_PAGES must be in [1, 3], got {v}")
+        return v
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
