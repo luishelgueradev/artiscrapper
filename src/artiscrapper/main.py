@@ -12,6 +12,7 @@ Full 10-step POST /search pipeline wired in plan 02-02:
 """
 
 import asyncio
+import random
 import re
 import time
 from pathlib import Path
@@ -493,6 +494,36 @@ def _compute_parity_metrics(
     }
 
 
+async def _parity_audit_sample(query: str, html: str) -> None:
+    """Phase 0.2.2 HARNESS-03 — fire-and-forget parity sample from POST /search.
+
+    Runs parity metrics on HTML the /search pipeline already produced. We
+    reuse the existing html_a (the non-meli SERP) so this task adds ZERO
+    Cloak rate-limit pressure and zero extra Google fetch — just a DOM parse
+    + a few regexes + 5 Prometheus updates.
+
+    Why we reuse the cached HTML instead of re-fetching:
+    - /search already paid the Cloak cost; doing it twice doubles the rate-
+      limiter pressure for no signal gain.
+    - The parity question is "what's in THIS html that the parser missed",
+      not "did Google's auction return more pla-units 200ms later".
+    - Keeps overhead <50ms p99 on a 1.5 MB SERP (DOM parse only).
+
+    NEVER raises into the caller — failure is logged structurally and
+    swallowed. The bg task pattern uses app.state.background_tasks (the
+    same set the cache-write task lives in) for strong-ref + GC safety.
+    """
+    try:
+        from selectolax.parser import HTMLParser
+
+        tree = HTMLParser(html)
+        pla_nodes_count = len(tree.css("div.pla-unit"))
+        candidates = parse_serp(html)
+        _compute_parity_metrics(query, html, candidates, pla_nodes_count)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("parity_sample_failed", query=query[:80], error=str(exc))
+
+
 @app.get("/admin/parity/{query:path}")
 async def admin_parity(
     request: Request,
@@ -936,6 +967,19 @@ async def search(
         _cache_task = asyncio.create_task(_write_cache())
         request.app.state.background_tasks.add(_cache_task)
         _cache_task.add_done_callback(request.app.state.background_tasks.discard)
+
+        # Phase 0.2.2 HARNESS-03 — sample 1/N of production traffic for parity
+        # drift detection. Reuses html_a (the non-meli SERP) already produced
+        # by the pipeline; NO extra Cloak fetch. Set PARITY_SAMPLE_RATE=0 to
+        # disable. Same bg-task strong-ref pattern as the cache write above.
+        if html_a and random.random() < settings.PARITY_SAMPLE_RATE:
+            _parity_task = asyncio.create_task(
+                _parity_audit_sample(body.query, html_a)
+            )
+            request.app.state.background_tasks.add(_parity_task)
+            _parity_task.add_done_callback(
+                request.app.state.background_tasks.discard
+            )
 
         return SearchResponse(
             query=body.query,
