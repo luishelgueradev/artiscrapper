@@ -21,18 +21,26 @@ log = structlog.get_logger()
 # ──────────────────────────────────────────
 
 
-def build_serp_url(query: str, *, meli: bool = False) -> str:
+def build_serp_url(query: str, *, meli: bool = False, page: int = 1) -> str:
     """
     D3: pws=0&safe=off always. NO num/tbm/udm/site:.
     URL B appends 'mercadolibre' to the query (NOT site: operator).
+    page=1 → no &start= param (backward compat with v0.1 URLs).
+    page>=2 → adds &start=(page-1)*10 per Google convention.
+    Page 11+ raises ValueError — beyond that is Google spam-detection territory.
     Pattern 9 from 02-RESEARCH.md (lines 1173-1184).
+    Phase 0.2.3 PAGE2-01: added page kwarg.
     """
+    if not 1 <= page <= 10:
+        raise ValueError(f"page must be in [1, 10], got {page}")
     q = f"{query} mercadolibre" if meli else query
     # quote_via=quote: spaces become %20, not +
-    params = urlencode(
-        {"q": q, "hl": "es", "gl": "ar", "pws": "0", "safe": "off"},
-        quote_via=quote,
-    )
+    params_dict: dict[str, str] = {
+        "q": q, "hl": "es", "gl": "ar", "pws": "0", "safe": "off",
+    }
+    if page >= 2:
+        params_dict["start"] = str((page - 1) * 10)
+    params = urlencode(params_dict, quote_via=quote)
     return f"https://www.google.com/search?{params}"
 
 
