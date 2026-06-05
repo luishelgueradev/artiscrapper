@@ -25,9 +25,9 @@
 
 ### Paginación Page 2
 
-- [ ] **PAGE2-01**: `build_serp_url(query, meli, page=N)` extendido con parámetro `page` que genera `&start=10*N` y `parse_serp` corre dos pages en paralelo via `asyncio.gather` (rate-limiter respetado).
-- [ ] **PAGE2-02**: dedupe global por URL canónica antes del LLM curator: si page 1 y page 2 tienen el mismo producto/MELI ID, se cuenta una vez. Test fixture-replay valida la deduplicación.
-- [ ] **PAGE2-03**: 2 fixtures HTML page 2 capturadas (organic-heavy + pla-heavy) + integration tests que verifican el gain incremental real medido.
+- [x] **PAGE2-01**: `build_serp_url(query, meli, page=N)` extendido con parámetro `page` que genera `&start=10*N` y `parse_serp` corre dos pages en paralelo via `asyncio.gather` (rate-limiter respetado). _(closed 2026-06-05, phase 0.2.3 plan 01)_
+- [x] **PAGE2-02**: dedupe global por URL canónica antes del LLM curator: si page 1 y page 2 tienen el mismo producto/MELI ID, se cuenta una vez. Test fixture-replay valida la deduplicación. _(closed 2026-06-05, phase 0.2.3 plan 02)_
+- [x] **PAGE2-03**: 2 fixtures HTML page 2 capturadas (organic-heavy + pla-heavy) + integration tests que verifican el gain incremental real medido. _(closed 2026-06-05, phase 0.2.3 plan 02; live gain measurement deferred to 0.2.3-HUMAN-UAT.md)_
 
 ### SerpAPI Ground-Truth Spike
 
@@ -67,7 +67,7 @@ Filled by the roadmap during `/gsd-plan-phase` cycles. Initial mapping (decidido
 |---|---|---|
 | PARITY-01..05 | 0.2.1 | Pending |
 | HARNESS-01..05 | 0.2.2 | Pending |
-| PAGE2-01..03 | 0.2.3 | Pending |
+| PAGE2-01..03 | 0.2.3 | Complete (2026-06-05; runtime UAT pending) |
 | SERPAPI-01..02 | 0.2.4 (opcional/spike) | Pending |
 | TECHDEBT-01..04 | 0.2.5 | Pending |
 

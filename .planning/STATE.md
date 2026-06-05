@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Paridad Visual + Robustez del Parser
-status: Phase 0.2.3 awaiting verifier
-stopped_at: Phase 0.2.3 Plans 01 + 02 complete (page-2 wiring + fixtures + 4 integration tests). Suite 121 passed / 2 skipped (+8 vs pre-phase). Awaiting code-review + verify_phase_goal before marking phase complete.
+status: Phase 0.2.3 complete (runtime UAT pending)
+stopped_at: Phase 0.2.3 closed 2026-06-05 — code-review 0 critical / 5 warnings / 6 info (advisory follow-ups WR-01 rate-limiter serialization + WR-02 parity audit page-1-only); verifier 11/11 must-haves green; 3 runtime smoke items deferred to operator via 0.2.3-HUMAN-UAT.md (CAPTCHA-rate, gain on 5 saturated queries, live google_fetches=4). Suite 121 passed / 2 skipped (+8 vs pre-phase). Next: 0.2.4 SerpAPI spike OR 0.2.5 tech debt.
 last_updated: "2026-06-05T20:38:51.877Z"
-last_activity: 2026-06-05 — Phase 0.2.3 all plans complete
+last_activity: 2026-06-05 — Phase 0.2.3 closed (verified, runtime UAT pending)
 progress:
   total_phases: 0
   completed_phases: 0
@@ -22,10 +22,10 @@ progress:
 
 ## Current Position
 
-Phase: 0.2.3 Paginación Page 2 (awaiting verifier)
+Phase: 0.2.3 Paginación Page 2 — Complete
 Plan: 01 + 02 complete (2/2)
-Status: All plans complete — running code-review + verify_phase_goal
-Last activity: 2026-06-05 — Phase 0.2.3 Wave 2 (Plan 02) complete
+Status: Phase complete; runtime UAT (0.2.3-HUMAN-UAT.md) pending operator smoke
+Last activity: 2026-06-05 — Phase 0.2.3 closed (verifier 11/11 green, code-review 0 critical)
 
 ## Recent Decisions
 

@@ -21,7 +21,7 @@
 - [ ] **Phase 5: Expansion** - Per-supplier adapters, residential proxy, async+SSE, multi-tenant auth — deferred-by-design, gated on growth triggers
 - [ ] **Phase 0.2.1: Parser Visual Parity** - Aplicar los 3 patches quirúrgicos del reporte (browser wait_until, regex precio v2, extractor pla-unit aditivo); +207% URLs reales medidas
 - [ ] **Phase 0.2.2: Harness de Paridad Visual Continua** - Endpoint /admin/parity completo + 12 queries cross-vertical + métricas Prometheus + CI nightly + alertas
-- [ ] **Phase 0.2.3: Paginación Page 2** - Fetch page 2 en paralelo + dedupe por URL canónica pre-LLM + tests fixture-replay
+- [x] **Phase 0.2.3: Paginación Page 2** - Fetch page 2 en paralelo + dedupe por URL canónica pre-LLM + tests fixture-replay (completed 2026-06-05; runtime smoke + gain measurement deferred to operator via 0.2.3-HUMAN-UAT.md)
 - [ ] **Phase 0.2.4: SerpAPI Ground-Truth Spike** - Spike 3 días evaluando SerpAPI como ground-truth del harness (~$1/mes); decisión documentada
 - [ ] **Phase 0.2.5: Carried Tech Debt v0.1** - tldextract 6.x, FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt
 
@@ -130,7 +130,7 @@
 | 5. Expansion | (deferred) | 0/TBD | Deferred-by-design | - |
 | 0.2.1. Parser Visual Parity | v0.2 | 0/2 (scaffolded) | Planned | - |
 | 0.2.2. Harness Paridad Continua | v0.2 | 0/TBD | Pending | - |
-| 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Awaiting verify | - |
+| 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Complete (runtime UAT pending) | 2026-06-05 |
 | 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/TBD | Conditional | - |
 | 0.2.5. Carried Tech Debt v0.1 | v0.2 | 0/TBD | Pending | - |
 
