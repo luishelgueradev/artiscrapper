@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Paridad Visual + Robustez del Parser
-status: planning
-last_updated: "2026-06-05T11:59:40.097Z"
-last_activity: 2026-06-05
+status: Defining requirements
+stopped_at: Phase 3.1 Plan 03 partial (Wave 3 Tasks 1+2 — D-05 Pattern B refactor of src/artiscrapper/main.py + new tests/test_main.py propagation invariant; commits 1f44310 (refactor), f29ee77 (test). Full quick suite 68 passed / 2 deselected — +1 vs prior baseline. Task 4 (D-06 empirical retest) queued for orchestrator; non-autonomous because it needs docker compose bump-and-recreate cycle.)
+last_updated: "2026-06-05T13:02:46.772Z"
+last_activity: 2026-06-05 — Milestone v0.2 started
 progress:
   total_phases: 0
   completed_phases: 0
