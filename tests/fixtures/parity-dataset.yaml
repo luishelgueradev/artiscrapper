@@ -1,0 +1,94 @@
+version: 1
+captured_at: 2026-06-05
+description: |
+  12 canonical queries for parity audit. Cross-vertical (6 categories ×
+  2 specificity levels). The 5 queries with measured baselines from the
+  2026-06-05 production smoke runtime have min_expected_real_urls set
+  to 50% of the measured value — leaves headroom for Google auction
+  volatility without making alerts noisy. The 7 queries without baseline
+  are placeholders that the first nightly run should recalibrate.
+
+queries:
+  - id: toy-coleccion
+    query: "figura coleccion robotech"
+    vertical: toy
+    specificity: espec
+    min_expected_real_urls: 9
+    notes: "Baseline 18 real URLs on 2026-06-05 (carousel-heavy + 4-11 pla-units variable)"
+
+  - id: toy-broad
+    query: "lego juguete niño"
+    vertical: toy
+    specificity: broad
+    min_expected_real_urls: 5
+    notes: "Baseline pending — recalibrate after first nightly run"
+
+  - id: auto-espec
+    query: "filtro aceite ford focus 2.0 2018"
+    vertical: auto
+    specificity: espec
+    min_expected_real_urls: 6
+    notes: "Baseline 11 real URLs on 2026-06-05 (6 pla-units + 5 organic)"
+
+  - id: auto-broad
+    query: "bujia ngk corolla"
+    vertical: auto
+    specificity: broad
+    min_expected_real_urls: 5
+    notes: "Baseline pending — recalibrate after first nightly run"
+
+  - id: electro-espec
+    query: "termotanque rheem 80 litros electrico"
+    vertical: electro
+    specificity: espec
+    min_expected_real_urls: 20
+    notes: "Baseline 40 real URLs on 2026-06-05 (30 pla-units + 10 organic)"
+
+  - id: electro-broad
+    query: "heladera samsung"
+    vertical: electro
+    specificity: broad
+    min_expected_real_urls: 10
+    notes: "Baseline pending — recalibrate after first nightly run"
+
+  - id: ropa-espec
+    query: "zapatillas nike air max hombre 42"
+    vertical: ropa
+    specificity: espec
+    min_expected_real_urls: 20
+    notes: "Baseline 39 real URLs on 2026-06-05 (30 pla-units saturated cap; carousel=0)"
+
+  - id: ropa-broad
+    query: "remera basquet"
+    vertical: ropa
+    specificity: broad
+    min_expected_real_urls: 5
+    notes: "Baseline pending — recalibrate after first nightly run"
+
+  - id: libro-espec
+    query: "harry potter piedra filosofal tapa dura"
+    vertical: libro
+    specificity: espec
+    min_expected_real_urls: 19
+    notes: "Baseline 38 real URLs on 2026-06-05 (30 pla-units + 8 organic)"
+
+  - id: libro-broad
+    query: "libro programacion python"
+    vertical: libro
+    specificity: broad
+    min_expected_real_urls: 5
+    notes: "Baseline pending — recalibrate after first nightly run"
+
+  - id: pelota-deporte
+    query: "pelota futbol adidas n5"
+    vertical: deporte
+    specificity: espec
+    min_expected_real_urls: 5
+    notes: "Baseline pending — recalibrate after first nightly run"
+
+  - id: electronica
+    query: "auriculares sony wh-1000xm5"
+    vertical: electronica
+    specificity: espec
+    min_expected_real_urls: 5
+    notes: "Baseline pending — recalibrate after first nightly run"
