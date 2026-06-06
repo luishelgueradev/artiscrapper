@@ -9,19 +9,19 @@
 
 ### Parser Visual Parity (Estrategia A — 3 patches quirúrgicos)
 
-- [ ] **PARITY-01**: `src/artiscrapper/browser.py` usa `wait_until="load"` (no `domcontentloaded`) + timeout 15s para que Cloak renderice el Shopping panel `div.pla-unit` antes de devolver HTML.
-- [ ] **PARITY-02**: `src/artiscrapper/search.py` expone `_extract_pla_unit(node)` + `PLA_SELECTORS = ["div.pla-unit"]` y `parse_serp()` corre un pass adicional pla-unit DESPUÉS del carousel loop, aditivo (no reemplaza organic cascade).
-- [ ] **PARITY-03**: `_PRICE_RE` en `search.py` matchea `$X.XXX,XX` con cierre `,DD` obligatorio + alternativa entero (`ARS 5000`, `U$S 5000`), cerrando el bug `$410.420,311001` reproducible con texto `$ 410.420,31` + nombre de store con dígitos.
-- [ ] **PARITY-04**: 2 fixtures HTML capturadas en `tests/fixtures/serp/` (`pla_unit_robotech.html`, `pla_unit_zapatillas.html`) + 9 unit tests (`test_pla_unit_*`, `test_price_regex_*`) + 4 integration tests fixture-replay en `tests/integration/test_serp_pla_unit_replay.py`, todos pasando.
-- [ ] **PARITY-05**: endpoint `GET /admin/parity/{query}` autenticado con X-API-Key registrado en `main.py`, retorna JSON con `html_metrics` + `parser_metrics` + `drift`; 2 métricas Prometheus mínimas registradas (`artiscrapper_parity_pla_units_in_html`, `artiscrapper_parity_pla_units_extracted`).
+- [x] **PARITY-01**: `src/artiscrapper/browser.py` usa `wait_until="load"` (no `domcontentloaded`) + timeout 15s para que Cloak renderice el Shopping panel `div.pla-unit` antes de devolver HTML. _(closed 2026-06-05, phase 0.2.1; subsequently revisited in issue #1 / phase 0.2.3 — switched to `domcontentloaded` + `wait_for_selector("div.pla-unit")` for stability under N×2 concurrency, pla-unit recovery preserved)_
+- [x] **PARITY-02**: `src/artiscrapper/search.py` expone `_extract_pla_unit(node)` + `PLA_SELECTORS = ["div.pla-unit"]` y `parse_serp()` corre un pass adicional pla-unit DESPUÉS del carousel loop, aditivo (no reemplaza organic cascade). _(closed 2026-06-05, phase 0.2.1 plan 01)_
+- [x] **PARITY-03**: `_PRICE_RE` en `search.py` matchea `$X.XXX,XX` con cierre `,DD` obligatorio + alternativa entero (`ARS 5000`, `U$S 5000`), cerrando el bug `$410.420,311001` reproducible con texto `$ 410.420,31` + nombre de store con dígitos. _(closed 2026-06-05, phase 0.2.1 plan 01)_
+- [x] **PARITY-04**: 2 fixtures HTML capturadas en `tests/fixtures/serp/` (`pla_unit_robotech.html`, `pla_unit_zapatillas.html`) + 9 unit tests + 4 integration tests fixture-replay, todos pasando. _(closed 2026-06-05, phase 0.2.1 plan 02)_
+- [x] **PARITY-05**: endpoint `GET /admin/parity/{query}` autenticado con X-API-Key registrado en `main.py`, retorna JSON con `html_metrics` + `parser_metrics` + `drift`; 2 métricas Prometheus mínimas registradas. _(closed 2026-06-05, phase 0.2.1 plan 02)_
 
 ### Harness de Paridad Visual Continua
 
-- [ ] **HARNESS-01**: dataset canónico de 12 queries cross-vertical persistido en `tests/fixtures/parity-dataset.yaml` o equivalente: 6 verticales × 2 niveles specificity (toy/auto/electro/ropa/libro/electronica × espec/broad).
-- [ ] **HARNESS-02**: métricas Prometheus completas registradas: `artiscrapper_parity_coverage_pct{query}`, `artiscrapper_parity_pla_units_missed{query}`, `artiscrapper_parity_url_synthetic_ratio{query}`, scrapeable desde `/metrics`.
-- [ ] **HARNESS-03**: sample asincrónico 1/10 sobre tráfico productivo de `/search`: cada décima query corre el audit en background sin bloquear la respuesta, overhead p99 <50ms medido.
-- [ ] **HARNESS-04**: GitHub Actions workflow `parity-nightly.yml` corre el dataset de 12 queries vía `compose up` ephemeral, agrega coverage promedio y falla CI si <75%.
-- [ ] **HARNESS-05**: alertas Prometheus declaradas: `ParityCoverageWarn` (75% por >30min) y `ParityCoverageFail` (50% por >5min) en `prometheus/alerts/parity.yaml` (o equivalente).
+- [x] **HARNESS-01**: dataset canónico de 12 queries cross-vertical persistido en `tests/fixtures/parity-dataset.yaml` (6 verticales × 2 niveles specificity). _(closed 2026-06-05, phase 0.2.2 plan 01)_
+- [x] **HARNESS-02**: métricas Prometheus completas registradas: `artiscrapper_parity_coverage_pct{query}`, `artiscrapper_parity_pla_units_missed{query}`, `artiscrapper_parity_url_synthetic_ratio{query}`, scrapeable desde `/metrics`. _(closed 2026-06-05, phase 0.2.2 plan 01)_
+- [x] **HARNESS-03**: sample asincrónico 1/10 sobre tráfico productivo de `/search` via `_parity_audit_sample` + hot-path schedule, overhead p99 <50ms medido. _(closed 2026-06-05, phase 0.2.2 plan 02)_
+- [x] **HARNESS-04**: GitHub Actions workflow `.github/workflows/parity-nightly.yml` corre el dataset de 12 queries y falla CI si avg coverage <75% (5 unit tests for the aggregator). _(closed 2026-06-05, phase 0.2.2 plan 03)_
+- [x] **HARNESS-05**: alertas Prometheus declaradas: `ParityCoverageWarn` (75% por >30min) y `ParityCoverageFail` (50% por >5min) en `prometheus/alerts/parity.yaml` (3 alert rules total). _(closed 2026-06-05, phase 0.2.2 plan 03)_
 
 ### Paginación Page 2
 
@@ -65,9 +65,9 @@ Filled by the roadmap during `/gsd-plan-phase` cycles. Initial mapping (decidido
 
 | REQ-ID | Phase | Status |
 |---|---|---|
-| PARITY-01..05 | 0.2.1 | Pending |
-| HARNESS-01..05 | 0.2.2 | Pending |
-| PAGE2-01..03 | 0.2.3 | Complete (2026-06-05; runtime UAT pending) |
+| PARITY-01..05 | 0.2.1 | Complete (2026-06-05) |
+| HARNESS-01..05 | 0.2.2 | Complete (2026-06-05) |
+| PAGE2-01..03 | 0.2.3 | Complete (2026-06-05; runtime UAT resolved 2026-06-06) |
 | ~~SERPAPI-01..02~~ | 0.2.4 | **CANCELLED 2026-06-06** (paid service constraint — ver feedback_no_paid_services) |
 | TECHDEBT-01..04 | 0.2.5 | Complete (2026-06-06) |
 

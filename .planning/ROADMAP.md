@@ -19,8 +19,8 @@
 - [x] **Phase 3.1: v0.1 close hygiene** - REQUIREMENTS.md traceability flip, SUMMARY frontmatter, X-API-Key e2e, degraded-mode TestClient, slowapi Pattern B, WR-01..04 cleanup (completed 2026-06-04, archived)
 - [ ] **Phase 4: Production Operations** - Grafana dashboards, Loki, cache invalidation endpoint, tracing — deferred-by-design, gated on prod telemetry demand
 - [ ] **Phase 5: Expansion** - Per-supplier adapters, residential proxy, async+SSE, multi-tenant auth — deferred-by-design, gated on growth triggers
-- [ ] **Phase 0.2.1: Parser Visual Parity** - Aplicar los 3 patches quirúrgicos del reporte (browser wait_until, regex precio v2, extractor pla-unit aditivo); +207% URLs reales medidas
-- [ ] **Phase 0.2.2: Harness de Paridad Visual Continua** - Endpoint /admin/parity completo + 12 queries cross-vertical + métricas Prometheus + CI nightly + alertas
+- [x] **Phase 0.2.1: Parser Visual Parity** - Aplicar los 3 patches quirúrgicos del reporte (browser wait_until, regex precio v2, extractor pla-unit aditivo); +207% URLs reales medidas (completed 2026-06-05; 2 plans SUMMARY-closed)
+- [x] **Phase 0.2.2: Harness de Paridad Visual Continua** - Endpoint /admin/parity completo + 12 queries cross-vertical + métricas Prometheus + CI nightly + alertas (completed 2026-06-05; 3 plans SUMMARY-closed)
 - [x] **Phase 0.2.3: Paginación Page 2** - Fetch page 2 en paralelo + dedupe por URL canónica pre-LLM + tests fixture-replay (completed 2026-06-05; runtime smoke + gain measurement deferred to operator via 0.2.3-HUMAN-UAT.md)
 - [~] **Phase 0.2.4: SerpAPI Ground-Truth Spike** - ~~Spike 3 días evaluando SerpAPI como ground-truth del harness (~$1/mes); decisión documentada~~ **CANCELLED 2026-06-06** — viola la constraint del proyecto: no servicios pagos de ningún tipo. La ground truth es lo que el explorador renderiza (Cloak/browser); arreglar el render si se rompe, no cambiar fuente.
 - [x] **Phase 0.2.5: Carried Tech Debt v0.1** - tldextract `.registered_domain` → `.top_domain_under_public_suffix` rename (tldextract 6.x doesn't exist on PyPI; deprecation warning was the actual root cause), FastAPI ORJSONResponse fully removed, httpx2 dev dep + always-on `error::DeprecationWarning` filter in pyproject, scripts/spike/ ruff-zero via source rename (no per-file-ignores). Suite 124 passed / 2 skipped / **0 warnings** under both implicit and explicit DeprecationWarning gates (completed 2026-06-06).
@@ -125,8 +125,8 @@
 | 3.1. v0.1 Close Hygiene | v0.1 | 3/3 | Complete (archived) | 2026-06-04 |
 | 4. Production Operations | (deferred) | 0/TBD | Deferred-by-design | - |
 | 5. Expansion | (deferred) | 0/TBD | Deferred-by-design | - |
-| 0.2.1. Parser Visual Parity | v0.2 | 0/2 (scaffolded) | Planned | - |
-| 0.2.2. Harness Paridad Continua | v0.2 | 0/TBD | Pending | - |
+| 0.2.1. Parser Visual Parity | v0.2 | 2/2 | Complete | 2026-06-05 |
+| 0.2.2. Harness Paridad Continua | v0.2 | 3/3 | Complete | 2026-06-05 |
 | 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Complete (runtime UAT pending) | 2026-06-05 |
 | 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/0 | CANCELLED (paid service constraint) | 2026-06-06 |
 | 0.2.5. Carried Tech Debt v0.1 | v0.2 | 4/4 | Complete | 2026-06-06 |
