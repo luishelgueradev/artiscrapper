@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Paridad Visual + Robustez del Parser
-status: Phase 0.2.3 closed (UAT pass + 3 gap fixes shipped); Phase 0.2.4 CANCELLED
-stopped_at: Phase 0.2.3 fully closed 2026-06-06 — UAT all 3 items pass + Gap A/B/C fixes shipped + live rerun 19/19 success + issue #1 resolved. Suite 124 passed / 2 skipped. Phase 0.2.4 (SerpAPI spike) CANCELLED 2026-06-06 — viola la constraint "no paid services" del proyecto (memoria feedback_no_paid_services). SERPAPI-01/02 removed; v0.2 active reqs 19 → 17. Next: 0.2.5 carried tech debt (no spending, code cleanup only).
-last_updated: "2026-06-05T20:38:51.877Z"
-last_activity: 2026-06-06 — Phase 0.2.4 cancelled; 0.2.5 next
+status: executing
+stopped_at: Phase 3.1 Plan 03 partial (Wave 3 Tasks 1+2 — D-05 Pattern B refactor of src/artiscrapper/main.py + new tests/test_main.py propagation invariant; commits 1f44310 (refactor), f29ee77 (test). Full quick suite 68 passed / 2 deselected — +1 vs prior baseline. Task 4 (D-06 empirical retest) queued for orchestrator; non-autonomous because it needs docker compose bump-and-recreate cycle.)
+last_updated: "2026-06-06T03:58:54.671Z"
+last_activity: 2026-06-06 -- Phase 0.2.5 planning complete
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,8 +24,8 @@ progress:
 
 Phase: 0.2.5 Carried Tech Debt (next; 0.2.4 cancelled 2026-06-06)
 Plan: —
-Status: Awaiting plan-phase for 0.2.5 (tldextract 6.x, ORJSONResponse cleanup, httpx2 migration, scripts/spike ruff debt)
-Last activity: 2026-06-06 — Phase 0.2.4 cancelled (paid-service constraint); standing rules persisted
+Status: Ready to execute
+Last activity: 2026-06-06 -- Phase 0.2.5 planning complete
 
 ## Recent Decisions
 
