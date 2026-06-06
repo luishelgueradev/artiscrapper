@@ -26,7 +26,7 @@ from selectolax.parser import HTMLParser
 
 # Add repo root to path for package import
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from scripts.spike.labels import CandidateInput, LabelledCandidate
+from scripts.spike.labels import LabelledCandidate
 
 SERP_DIR = Path(__file__).parent.parent.parent / "tests" / "fixtures" / "serp"
 LABELLED_PATH = Path(__file__).parent.parent.parent / "tests" / "fixtures" / "llm" / "labelled.jsonl"
@@ -351,7 +351,7 @@ def run_label() -> None:
         labelled_records.append(validated.model_dump_json())
 
         if len(labelled_records) == 30:
-            print(f"INFO: AC-5 minimum reached (30 records). Continuing to 50...", file=sys.stderr)
+            print("INFO: AC-5 minimum reached (30 records). Continuing to 50...", file=sys.stderr)
 
     if len(labelled_records) < 30:
         print(
@@ -369,8 +369,8 @@ def run_label() -> None:
     )
 
     # Quick distribution summary
-    positives = sum(1 for l in labelled_records if '"expected_is_product":true' in l)
-    negatives = sum(1 for l in labelled_records if '"expected_is_product":false' in l)
+    positives = sum(1 for line in labelled_records if '"expected_is_product":true' in line)
+    negatives = sum(1 for line in labelled_records if '"expected_is_product":false' in line)
     print(
         f"Distribution: {positives} positive, {negatives} negative, "
         f"{len(labelled_records) - positives - negatives} ambiguous",
@@ -387,7 +387,7 @@ def run_validate(jsonl_path_str: str) -> None:
         print(f"LABELLED_VALID: NO (file not found: {jsonl_path})")
         sys.exit(1)
 
-    lines = [l.strip() for l in jsonl_path.read_text().splitlines() if l.strip()]
+    lines = [line.strip() for line in jsonl_path.read_text().splitlines() if line.strip()]
     count = len(lines)
     print(f"LABELLED_COUNT: {count}")
 

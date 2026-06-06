@@ -20,7 +20,6 @@ Exit codes:
 """
 
 import asyncio
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,7 +30,6 @@ from pathlib import Path
 # After import, playwright.async_api is available via the bundled playwright.
 try:
     from cloakbrowser import launch_async  # noqa: F401
-    import cloakbrowser as _cb
     CLOAK_IMPORT = "cloakbrowser.launch_async"
     print(f"Cloak Python import path: {CLOAK_IMPORT}")
 except ImportError:
@@ -227,7 +225,7 @@ async def main(out_dir_str: str) -> None:
     print(f"[02_cloak_smoke] Output dir: {out_dir.resolve()}")
 
     # Step 1: Smoke + capture
-    results = await smoke(out_dir)
+    await smoke(out_dir)
 
     # Step 2: Count fixtures
     fixtures = list(out_dir.glob("*.html"))

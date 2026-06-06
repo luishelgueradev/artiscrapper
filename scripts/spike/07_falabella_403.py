@@ -128,7 +128,7 @@ async def main(host: str) -> int:
     consecutive_5xx = 0
 
     print(f"[07_falabella_403] Probing host={host} with N={n} URLs")
-    print(f"[07_falabella_403] DEFAULT_HEADERS: Sec-Fetch-Site=cross-site, Referer=google.com (D11 invariant)")
+    print("[07_falabella_403] DEFAULT_HEADERS: Sec-Fetch-Site=cross-site, Referer=google.com (D11 invariant)")
 
     async with httpx.AsyncClient(
         http2=True,
@@ -157,7 +157,7 @@ async def main(host: str) -> int:
 
             # Abort on 3 consecutive 5xx (acceptance criterion)
             if consecutive_5xx >= 3:
-                print(f"[07_falabella_403] ABORT: 3 consecutive 5xx detected — stopping to avoid IP-block escalation")
+                print("[07_falabella_403] ABORT: 3 consecutive 5xx detected — stopping to avoid IP-block escalation")
                 # Write abort flag to artifact
                 artifact_path.write_text(
                     f"aborted_after_3_consecutive_5xx: YES\n"
@@ -192,23 +192,23 @@ async def main(host: str) -> int:
     # ── Write artifact ────────────────────────────────────────────────────────
     lines = []
     lines.append(f"## 403-rate probe: host={host} (N={n_total}, {THROTTLE_SECONDS}s spacing, httpx + DEFAULT_HEADERS)")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"| N={n_total} | host | 200 | 403 | 5xx | timeout | other |")
-    lines.append(f"|------|------|-----|-----|-----|---------|-------|")
+    lines.append("|------|------|-----|-----|-----|---------|-------|")
     lines.append(f"| {n_total}   | {host} | {count_200} | {count_403} | {count_5xx} | {count_timeout} | {count_other} |")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"conclusion: success rate={success_rate:.0%} ({count_200}/{n_total}) under bare httpx + Chromium-146 headers")
-    lines.append(f"")
-    lines.append(f"## Per-attempt detail")
-    lines.append(f"")
+    lines.append("")
+    lines.append("## Per-attempt detail")
+    lines.append("")
     for r in results:
         status = r["status"]
         elapsed = r["elapsed"]
         err_suffix = f" err={r['error']}" if r["error"] else ""
         lines.append(f"| {r['idx']:02d} | {status} | {elapsed:.2f}s | {r['byte_count']}B | {(r['final_url'] or r['url'])[:60]}{err_suffix} |")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"D11_VERDICT_{host}: {verdict}")
-    lines.append(f"")
+    lines.append("")
     if success_rate >= 0.7:
         lines.append(f"Phase 2 implication: DEFAULT_HEADERS sufficient for {host} — curl-cffi deferral to Phase 3 confirmed for this host.")
     elif success_rate < 0.5:
