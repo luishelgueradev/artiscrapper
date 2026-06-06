@@ -1,0 +1,7 @@
+{"query_id":"toy-coleccion","query":"figura coleccion robotech rerun-pages2-broad-005010","http_status":200,"elapsed_ms":16574,"candidates_total":25,"google_fetches":4,"block_detected":null,"llm_degraded":null}
+{"query_id":"toy-broad","query":"lego juguete niño rerun-pages2-broad-005010","http_status":200,"elapsed_ms":15034,"candidates_total":20,"google_fetches":4,"block_detected":null,"llm_degraded":null}
+{"query_id":"auto-espec","query":"filtro aceite ford focus 2.0 2018 rerun-pages2-broad-005010","http_status":200,"elapsed_ms":14334,"candidates_total":63,"google_fetches":4,"block_detected":null,"llm_degraded":null}
+{"query_id":"auto-broad","query":"bujia ngk corolla rerun-pages2-broad-005010","http_status":200,"elapsed_ms":16145,"candidates_total":62,"google_fetches":4,"block_detected":null,"llm_degraded":null}
+{"query_id":"electro-broad","query":"heladera samsung rerun-pages2-broad-005010","http_status":200,"elapsed_ms":15152,"candidates_total":55,"google_fetches":4,"block_detected":null,"llm_degraded":null}
+{"query_id":"ropa-broad","query":"remera basquet rerun-pages2-broad-005010","http_status":200,"elapsed_ms":14043,"candidates_total":18,"google_fetches":4,"block_detected":null,"llm_degraded":null}
+{"query_id":"libro-espec","query":"harry potter piedra filosofal tapa dura rerun-pages2-broad-005010","http_status":200,"elapsed_ms":13849,"candidates_total":56,"google_fetches":4,"block_detected":null,"llm_degraded":null}

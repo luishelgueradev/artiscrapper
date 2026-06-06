@@ -1,0 +1,5 @@
+artiscrapper_block_detected_total{reason="consent_interstitial"} 0.0
+artiscrapper_block_detected_total{reason="sorry"} 0.0
+artiscrapper_block_detected_total{reason="recaptcha"} 0.0
+artiscrapper_block_detected_total{reason="unknown"} 0.0
+artiscrapper_search_elapsed_seconds_count 5.0
