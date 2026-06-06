@@ -178,7 +178,7 @@ async def main() -> int:
     violations = [u for u in urls if MELI_PATTERN.search(u)]
     if violations:
         print(
-            f"ERROR: VISIT-08 violation — mercadolibre URL(s) detected:\n"
+            "ERROR: VISIT-08 violation — mercadolibre URL(s) detected:\n"
             + "\n".join(f"  {v}" for v in violations),
             file=sys.stderr,
         )

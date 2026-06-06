@@ -5,8 +5,9 @@ Lifted verbatim from 01-RESEARCH.md §"Pattern 7: labelled.jsonl schema" (lines 
 No business logic — schema only.
 """
 
-from pydantic import BaseModel, Field
 from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class CandidateInput(BaseModel):

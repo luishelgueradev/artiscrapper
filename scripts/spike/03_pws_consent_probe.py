@@ -19,7 +19,6 @@ Exit codes:
 """
 
 import asyncio
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -145,7 +144,7 @@ async def top_up_fixtures(out_dir: Path, existing_count: int, target: int = 10) 
             if "/sorry/index" in hits or 'g-recaptcha' in hits:
                 consecutive_blocks += 1
                 if consecutive_blocks >= CONSECUTIVE_BLOCK_ABORT:
-                    print(f"WARNING: 3 consecutive blocks — aborting capture (T-01-01-03)")
+                    print("WARNING: 3 consecutive blocks — aborting capture (T-01-01-03)")
                     await ctx.close()
                     await browser.close()
                     break
@@ -226,7 +225,7 @@ async def main() -> None:
 
     # Top up to 10 if needed (tasks 2 already ran 10 but may be re-running)
     if existing_count < 10:
-        new_results = await top_up_fixtures(out_dir, existing_count, target=10)
+        await top_up_fixtures(out_dir, existing_count, target=10)
     else:
         print(f"[03] Already have {existing_count} fixtures — analysis only")
 
@@ -291,8 +290,8 @@ async def main() -> None:
     if manifest_path.exists():
         with manifest_path.open("a", encoding="utf-8") as mf:
             mf.write("\n## Aggregate\n\n")
-            mf.write(f"| total_fixtures | with_any_marker | mean_size_kb | min_size_kb | max_size_kb |\n")
-            mf.write(f"|----------------|-----------------|--------------|-------------|-------------|\n")
+            mf.write("| total_fixtures | with_any_marker | mean_size_kb | min_size_kb | max_size_kb |\n")
+            mf.write("|----------------|-----------------|--------------|-------------|-------------|\n")
             mf.write(f"| {total} | {with_any} | {mean_kb} | {min_kb} | {max_kb} |\n")
             mf.write(f"\n{verdict}\n")
 

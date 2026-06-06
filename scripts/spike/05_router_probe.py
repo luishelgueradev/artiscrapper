@@ -125,8 +125,8 @@ async def probe_models(token: str, base_url: str) -> None:
         print("[models] WARNING: chat-local not found in /v1/models")
 
     # Append to summary
-    _append_summary(f"endpoint_ok: YES (200 from /healthz with bearer)")
-    _append_summary(f"default_chat_model: chat-local (backend: qwen2.5:7b-instruct-q4_K_M)")
+    _append_summary("endpoint_ok: YES (200 from /healthz with bearer)")
+    _append_summary("default_chat_model: chat-local (backend: qwen2.5:7b-instruct-q4_K_M)")
 
 
 # ── sub-step 2: one-shot completion ──────────────────────────────────────────
@@ -160,10 +160,9 @@ async def probe_oneshot(token: str, base_url: str) -> None:
 
     # Check JSON parseable
     try:
-        parsed = json.loads(content)
+        json.loads(content)
         json_ok = True
     except json.JSONDecodeError:
-        parsed = None
         json_ok = False
 
     lines = [
@@ -181,7 +180,7 @@ async def probe_oneshot(token: str, base_url: str) -> None:
     (ARTIFACTS / "router_oneshot.txt").write_text(out + "\n")
 
     # Record JSON mode success for summary (rate so far: 1/1)
-    _append_summary(f"json_mode_first_try_rate: 1/1 (will aggregate in ttft probe)")
+    _append_summary("json_mode_first_try_rate: 1/1 (will aggregate in ttft probe)")
 
 
 # ── sub-step 3: TTFT via SSE streaming ─────────────────────────────────────────
@@ -289,7 +288,7 @@ async def probe_ttft(token: str, base_url: str) -> None:
     summary_path = ARTIFACTS / "router_summary.txt"
     summary_text = summary_path.read_text() if summary_path.exists() else ""
     # Remove the provisional json_mode_first_try_rate line
-    filtered = [l for l in summary_text.splitlines() if not l.startswith("json_mode_first_try_rate:")]
+    filtered = [line for line in summary_text.splitlines() if not line.startswith("json_mode_first_try_rate:")]
     filtered.append(f"json_mode_first_try_rate: {json_ok_count}/5")
     summary_path.write_text("\n".join(filtered) + "\n")
 
@@ -378,7 +377,7 @@ async def _fire_burst(n: int, token: str, base_url: str) -> list[tuple[int, str 
             try:
                 r = await client.post(url, headers=hdrs, json=body)
                 return r.status_code, r.headers.get("retry-after"), time.perf_counter() - t
-            except Exception as e:
+            except Exception:
                 return -1, None, time.perf_counter() - t
 
     wall_t0 = time.perf_counter()
@@ -403,7 +402,6 @@ async def probe_concurrency(token: str, base_url: str) -> None:
         count_200 = statuses.count(200)
         count_429 = statuses.count(429)
         count_503 = statuses.count(503)
-        count_queue = statuses.count(529)  # 529 = queue timeout if router uses it
         mean_elapsed = sum(elapsed_vals) / len(elapsed_vals) if elapsed_vals else 0
 
         header = f"N={n}: wall={wall_elapsed:.2f}s mean_per_call={mean_elapsed:.2f}s 200={count_200} 429={count_429} 503={count_503}"
@@ -418,7 +416,7 @@ async def probe_concurrency(token: str, base_url: str) -> None:
         summaries.append((n, count_200, count_429, count_503, mean_elapsed, wall_elapsed))
 
         if n < 8:
-            print(f"[concurrency]   Pausing 30s to let queue drain ...")
+            print("[concurrency]   Pausing 30s to let queue drain ...")
             await asyncio.sleep(30)
 
     # Recommendation logic (RESEARCH lines 204-208)
@@ -430,7 +428,6 @@ async def probe_concurrency(token: str, base_url: str) -> None:
     n4_200, n4_429, n4_503 = n4_result[1], n4_result[2], n4_result[3]
     n8_200, n8_429, n8_503 = n8_result[1], n8_result[2], n8_result[3]
     n4_mean = n4_result[4]
-    n2_mean = n2_result[4]
 
     if n4_429 > 0 or n4_503 > 0:
         recommend = 2
@@ -458,7 +455,7 @@ async def probe_concurrency(token: str, base_url: str) -> None:
     (ARTIFACTS / "router_concurrency.txt").write_text(out + "\n")
 
     # Append to summary
-    _append_summary(f"concurrency_table:")
+    _append_summary("concurrency_table:")
     _append_summary(f"  N=2: {n2_200}/2 200, {n2_429} 429, {n2_503} 503, mean={n2_result[4]:.2f}s")
     _append_summary(f"  N=4: {n4_200}/4 200, {n4_429} 429, {n4_503} 503, mean={n4_result[4]:.2f}s")
     _append_summary(f"  N=8: {n8_200}/8 200, {n8_429} 429, {n8_503} 503, mean={n8_result[4]:.2f}s")
@@ -536,7 +533,7 @@ async def main() -> None:
             "kvcache_verdict",
             "recommend_llm_concurrency",
         ]
-        missing = [k for k in required_keys if not any(l.startswith(k) for l in summary_text.splitlines())]
+        missing = [k for k in required_keys if not any(line.startswith(k) for line in summary_text.splitlines())]
         if missing:
             print(f"WARNING: router_summary.txt missing keys: {missing}", file=sys.stderr)
         else:

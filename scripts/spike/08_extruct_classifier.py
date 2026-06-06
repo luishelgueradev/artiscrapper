@@ -273,10 +273,10 @@ def main() -> int:
     decision_lines = []
     decision_lines.append(f"D12_DECISION: {decision}")
     decision_lines.append("")
-    decision_lines.append(f"# Rationale")
+    decision_lines.append("# Rationale")
     decision_lines.append(rationale)
     decision_lines.append("")
-    decision_lines.append(f"# Aggregate counts")
+    decision_lines.append("# Aggregate counts")
     decision_lines.append(f"sufficient (jsonld+og): {sufficient_count}/10")
     decision_lines.append(f"needs-extruct (microdata+blob): {needs_extruct_count}/10")
     decision_lines.append(f"jsonld-sufficient: {tier_counts['jsonld-sufficient']}")
