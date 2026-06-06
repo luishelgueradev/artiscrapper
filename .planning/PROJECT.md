@@ -10,6 +10,9 @@ Servicio HTTP que dada una query de búsqueda (e.g. `"filtro aire ranger"`) devu
 
 **Si solo una cosa tiene que funcionar bien**: el endpoint `POST /search` recibe una query con `X-API-Key`, dispara 2 fetches a Google (`q` y `q +mercadolibre`), filtra con LLM local para quedarse solo con productos comprables, valida live + precio visitando los survivors cuando hace falta, y devuelve un JSON ordenado por relevancia. El consumidor recibe **productos que existen, con precio, link y procedencia clara** — empíricamente validado en v0.1 contra queries reales `pelota playera quico` y `filtro aceite ford focus`.
 
+<details>
+<summary>📦 Prior shipped state (v0.1 — 2026-06-04, archived)</summary>
+
 ## Current State (v0.1 — shipped 2026-06-04)
 
 - **Production-ready single-container deploy**: Dockerfile multi-stage con `cloakhq/cloakbrowser:0.3.31` + Chromium pin `v146.0.7680.177.5`, `tini`/`--init`, `uv sync --locked`, sqlite bind-mount `./data/cache.db`. CI-asserted no-uvloop + no-launch_persistent_context invariants.
@@ -18,22 +21,33 @@ Servicio HTTP que dada una query de búsqueda (e.g. `"filtro aire ranger"`) devu
 - **Resilience**: X-API-Key auth con `hmac.compare_digest` constant-time; stacked slowapi rate-limit `(60/min + 10000/day)` Pattern B (module constants → decorator argument + log line, drift impossible by construction); ChallengeBackoff state machine `min(60·2^retries, 3600)` con sqlite single-row persistence surviving `compose up --force-recreate`; 503+Retry-After when gate denies.
 - **Test surface**: 68 unit + 9 integration + 2 e2e (E2E=1 gated) = 79 tests; mypy --strict on `src/artiscrapper/` clean; ruff + format clean on production files. PRD §10 success criteria validated by operator UAT 2026-06-02.
 
-## Current Milestone: v0.2 Paridad Visual + Robustez del Parser
+</details>
 
-**Goal:** Cerrar el gap empíricamente medido del parser SERP — el servicio actual pierde **+207% URLs reales** y **+74% productos con precio** frente a lo que un humano ve en la SERP de Google (medición transversal en 5 queries comerciales, ver `.planning/PARSER-VISUAL-PARITY-2026-06-05.md`). v0.2 cierra ese gap con cambios quirúrgicos (no rewrite), instala un harness continuo de paridad visual para detectar drift por rotación de Google, y limpia el carried tech debt de v0.1.
+## Current State (v0.2 — shipped 2026-06-06)
 
-**Target features:**
-- **Parser Visual Parity (Estrategia A)** — switch `wait_until="load"` en Cloak (recupera Shopping panel `pla-unit`), extractor `_extract_pla_unit()` aditivo al cascade actual, regex precio v2 (cierra bug `$410.420,311001`). Medición prototipada: +61% candidates, +207% URLs reales, +74% precios.
-- **Harness de paridad visual continua** — endpoint `GET /admin/parity/{query}` autenticado, dataset canónico de 12 queries cross-vertical, métricas Prometheus (`parity_coverage_pct`, `parity_pla_units_missed`, `parity_url_synthetic_ratio`), CI nightly que falla a coverage <75%.
-- **Paginación page 2** — fetchar `&start=10` en paralelo con page 1, dedupe por URL canónica antes del LLM curator. Expected gain: queries que ya saturan a 30 pla-units en page 1 (zapatillas, termotanque) ganan ~10-20 organic adicionales en page 2.
-- ~~**SerpAPI como ground-truth opcional**~~ — **CANCELLED 2026-06-06**: la phase 0.2.4 asumía servicio SaaS pago que viola la constraint del proyecto. Ground truth = lo que el explorador renderiza.
-- **Carried tech debt v0.1** — tldextract 5.3.1 → 6.x (rename `.registered_domain` → `.top_domain_under_public_suffix`), FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt.
+v0.2 cerró el gap empíricamente medido del parser SERP (+207% URLs reales) con cambios quirúrgicos sobre v0.1, instaló harness continuo de paridad visual, agregó paginación page 2 (+39% candidate volume medido live), y limpió carried tech debt. **75 commits, 11 plans, 2 días wall-clock, 124/2/0-warnings suite at close.**
 
-**Out of scope explícito v0.2:**
-- **Servicios pagos de cualquier tipo** — SerpAPI, Bright Data, Oxylabs, ScraperAPI, OpenAI cloud, Sentry tier paid, observability SaaS, etc. Constraint hard del proyecto (2026-06-06). La ground truth válida es lo que el explorador renderiza (Cloak / Playwright / browser-rendered); si el render se rompe, se arregla el render, no se cambia la fuente.
-- **Estrategia B (DOM-driven browser persistente)** — viola D8 invariant; el reporte cierra que las URLs reales del carousel solo son recuperables con JS-render adicional + clic simulado, costo arquitectónico no justificado.
-- **Resolución de URLs reales del carousel** — los 30 carousel items por query siguen con URL sintética `google.com/search?q=Title+site:Store`. Es lo mejor sin Estrategia B y el reporte demuestra que sigue siendo accionable para el consumidor.
-- **Phases 4-5 deferred-by-design** — Phase 4 (production-ops, Grafana/Loki) y Phase 5 (per-supplier adapters, residential proxy, SSE, multi-tenant) siguen gated en sus triggers originales. v0.2 NO los activa.
+- **Parser visual parity shipped:** `wait_until="domcontentloaded"` + `wait_for_selector("div.pla-unit")` (revisited from Phase 0.2.1's original `wait_until="load"` after issue #1 surfaced N×2 fragility); extractor `_extract_pla_unit()` aditivo al cascade; regex precio v2 (`,DD` cierre obligatorio). **Endpoint `GET /admin/parity/{query}`** autenticado retorna `html_metrics` + `parser_metrics` + `drift` con 2 Prometheus gauges mínimas.
+- **Continuous parity harness shipped:** Dataset canónico de **12 queries** cross-vertical (`tests/fixtures/parity-dataset.yaml`). **3 Prometheus gauges** completas (`parity_coverage_pct{query}`, `parity_pla_units_missed{query}`, `parity_url_synthetic_ratio{query}`). Sample 1/10 async en hot path productivo (p99 <50ms). **GitHub Actions `.github/workflows/parity-nightly.yml`** falla CI a coverage avg <75%. **3 Prometheus alert rules** en `prometheus/alerts/parity.yaml` (Warn @75%>30min + Fail @50%>5min).
+- **Page 2 pagination shipped:** `build_serp_url(query, meli, page=N)` con `&start=10*(N-1)`. `settings.SEARCH_FETCH_PAGES` (default 2, validado [1,3], env-overridable via compose.yml passthrough). `POST /search` loops N×2 fetches en `asyncio.gather`. Dedupe pre-LLM por URL canónica. **2 frozen page-2 fixtures** (termotanque + zapatillas) + 4 integration tests pinning las invariantes. Gain medido live: **+39% candidate volume** (271 → 376 across 5 saturated queries; 4 of 5 muestran 20-69% increase).
+- **Stability hardening (issue #1 + 3 Gap fixes):** Browser singleton ya no muere bajo N×2 sostenido (14 consecutive calls 0 deaths). Real Google blocks ahora correctamente surface en `block_detected_total{sorry_redirect}` en vez de ocultarse como `TargetClosedError`. Honest `google_fetches` accounting on all non-success paths (cache_hit=0, 503=0, exception=0, block=len(htmls)). `compose.yml` env passthrough fixed (`SEARCH_FETCH_PAGES` rollback knob now actually wired). Footgun test pina el invariant.
+- **Tech debt closed:** tldextract `.registered_domain` → `.top_domain_under_public_suffix` rename (6.x doesn't exist on PyPI yet; deprecation was the real root cause). FastAPI `default_response_class=ORJSONResponse` fully removed (Pydantic-Rust default per PR #14964). `httpx2==2.3.0` dev dep (Starlette auto-detects via testclient import-by-name). `filterwarnings = ["error::DeprecationWarning"]` **always-on in pyproject.toml** (gate is the default, not opt-in). `scripts/spike/` ruff-zero via source rename `l → line` (no per-file-ignores, no `# noqa` shortcuts).
+
+**Out of scope explícito (carried into v0.3+):**
+- **Servicios pagos de cualquier tipo** — SerpAPI, Bright Data, Oxylabs, ScraperAPI, OpenAI cloud, Sentry tier paid, observability SaaS, etc. Constraint hard del proyecto (locked 2026-06-06; standing memories `feedback_no_paid_services` + `feedback_browser_rendered_ground_truth`). Ground truth = lo que el explorador renderiza (Cloak / Playwright / browser-rendered); si el render se rompe, se arregla el render, no se cambia la fuente.
+- **Estrategia B (DOM-driven browser persistente)** — viola D8 invariant; URLs reales del carousel solo recuperables con JS-render + clic simulado, costo arquitectónico no justificado.
+- **Resolución de URLs reales del carousel** — los 30 carousel items por query siguen con URL sintética `google.com/search?q=Title+site:Store`. Best-effort sin Estrategia B; el reporte demuestra que sigue siendo accionable para el consumidor.
+- **Phases 4-5 deferred-by-design** — Phase 4 (production-ops, Grafana/Loki) y Phase 5 (per-supplier adapters, residential proxy, SSE, multi-tenant) siguen gated en sus triggers originales.
+
+## Next Milestone Goals (v0.3 — TBD)
+
+Scope to be defined via `/gsd:new-milestone`. Likely candidates (not committed):
+
+- Carousel real-URL resolution (Estrategia B revisited, or alternative browser-rendered approach within D8 invariant).
+- WR-01 follow-up: GoogleRateLimiter `Semaphore(1)` serialization risk under N×2 fetches when `GOOGLE_MIN_INTERVAL_S > 0` (latent landmine — code review surfaced in 0.2.3).
+- WR-02 follow-up: parity-audit page-1-only — current `_parity_audit_sample` ignores page-2 HTML, so HARNESS-05 drift signal is undercount on queries where page-2 contributes ≥50% (code review surfaced in 0.2.3).
+- LLM router rotation / multi-model fallback (if `local-llms-router` model drift becomes operational concern).
+- Phase 4 trigger conditions hit? Grafana/Loki/tracing on-ramp.
 
 ## Requirements
 
@@ -52,31 +66,25 @@ All 55 v1 REQ-IDs SATISFIED per `.planning/milestones/v0.1-MILESTONE-AUDIT.md` (
 - ✓ **OBS-07** — `/metrics` ASGI sub-app + 6+ canonical artiscrapper_* families + Histograms — v0.1 (Phase 3)
 - ✓ **NF-01..04** — PRD §10 latency budget, respx mocks, mypy --strict, ruff clean — v0.1
 
-### Active (v0.2 Paridad Visual + Robustez del Parser)
+### Validated (v0.2 — shipped 2026-06-06)
 
-Definido 2026-06-05 por evidencia empírica del reporte `.planning/PARSER-VISUAL-PARITY-2026-06-05.md`. REQ-IDs:
+All 17 active v0.2 REQ-IDs SATISFIED (2 cancelled, see below):
 
-- **PARITY-01** — Switch `wait_until="load"` + timeout 15s en `browser.py` para que Cloak renderice el Shopping panel
-- **PARITY-02** — Extractor `_extract_pla_unit()` aditivo al cascade actual (pla-unit en `parse_serp` después del carousel loop)
-- **PARITY-03** — Regex precio v2 con cierre `,DD` obligatorio (cierra bug `$410.420,311001`)
-- **PARITY-04** — Fixtures HTML congeladas para `pla_unit_robotech.html` y `pla_unit_zapatillas.html` (+9 unit tests + 4 integration tests)
-- **PARITY-05** — Endpoint `GET /admin/parity/{query}` autenticado + métricas Prometheus mínimas
-- **HARNESS-01** — Dataset canónico de 12 queries cross-vertical (6 verticales × 2 niveles specificity)
-- **HARNESS-02** — Métricas Prometheus completas: `parity_coverage_pct{query}`, `parity_pla_units_missed{query}`, `parity_url_synthetic_ratio`
-- **HARNESS-03** — Sample asincrónico 1/10 en hot path productivo (overhead <50ms)
-- **HARNESS-04** — CI nightly job que corre el dataset y falla a coverage promedio <75%
-- **HARNESS-05** — Alertas WARN 75%, FAIL 50% sobre las métricas anteriores
-- ✓ **PAGE2-01** — Fetch page 2 (`&start=10`) en paralelo con page 1 vía Cloak — v0.2.3 (2026-06-05; runtime smoke pending operator)
-- ✓ **PAGE2-02** — Dedupe por URL canónica antes del LLM curator (no duplicar entre pages) — v0.2.3 (2026-06-05)
-- ✓ **PAGE2-03** — Tests fixture-replay sobre page 2 (2 fixtures: organic-heavy + pla-heavy) — v0.2.3 (2026-06-05)
-- **SERPAPI-01** — Spike SerpAPI (3 días): cliente httpx + comparación con Cloak output sobre 12 queries
-- **SERPAPI-02** — Decisión documentada: integrar SerpAPI al harness continuo (~$1/mes) o defer indefinidamente
-- ✓ **TECHDEBT-01** — tldextract `.registered_domain` → `.top_domain_under_public_suffix` rename (6.x doesn't exist on PyPI yet) — v0.2.5 (2026-06-06)
-- ✓ **TECHDEBT-02** — FastAPI ORJSONResponse fully removed (Pydantic-Rust default is the fast path) — v0.2.5 (2026-06-06)
-- ✓ **TECHDEBT-03** — httpx2 2.3.0 dev dep + always-on `error::DeprecationWarning` gate in pyproject — v0.2.5 (2026-06-06)
-- ✓ **TECHDEBT-04** — `scripts/spike/` ruff-zero via source rename `l → line` (no per-file-ignores) — v0.2.5 (2026-06-06)
+- ✓ **PARITY-01..05** — Parser visual parity (wait_until + pla-unit extractor + precio v2 + fixtures + `/admin/parity/{query}` endpoint with Prometheus gauges) — v0.2.1 (2026-06-05). PARITY-01 subsequently revisited: switched from `wait_until="load"` to `wait_until="domcontentloaded"` + `wait_for_selector("div.pla-unit")` for stability under N×2 concurrency (issue #1 resolved 2026-06-06).
+- ✓ **HARNESS-01..05** — Continuous parity harness (12-query canonical dataset + 3 Prometheus gauges + 1/N async sample on hot path + CI nightly + Warn/Fail alerts) — v0.2.2 (2026-06-05).
+- ✓ **PAGE2-01..03** — Page-2 pagination (build_serp_url page kwarg + SEARCH_FETCH_PAGES setting + N×2 asyncio.gather + dedupe by canonical URL + 2 frozen fixtures + 4 integration tests). Live gain measured: +39% candidate volume on saturated queries. — v0.2.3 (2026-06-05, UAT rerun 2026-06-06).
+- ⊘ **SERPAPI-01..02** — **CANCELLED 2026-06-06**: violates the standing project rule "no paid services of any kind". The decision is permanent — `feedback_no_paid_services` standing memory codifies it.
+- ✓ **TECHDEBT-01..04** — Carried v0.1 tech debt (tldextract rename + ORJSONResponse removal + httpx2 dev dep + always-on `error::DeprecationWarning` filter + scripts/spike ruff-zero) — v0.2.5 (2026-06-06).
 
-### Out of Scope (still valid post-v0.1)
+### Active (v0.3 — TBD)
+
+Scope to be defined via `/gsd:new-milestone`. Likely v0.3 candidates surfaced by v0.2 work:
+
+- **CAROUSEL-01** — Carousel real-URL resolution within D8 invariant (Estrategia B revisited or browser-rendered alternative; currently 30 carousel items per query serve synthetic `g/search?q=...&site:Store` URLs).
+- **WR-01-FOLLOWUP** — `GoogleRateLimiter` `Semaphore(1)` serializes the N×2 fetches when `GOOGLE_MIN_INTERVAL_S > 0`. Latent landmine (currently masked by default of 0) — needs to either drop the serializer or raise the timeout per-fetch.
+- **WR-02-FOLLOWUP** — `_parity_audit_sample` only reads `html_a` (page-1) while the response now carries page-2 candidates. HARNESS-05 drift signal is undercount on queries where page-2 contributes ≥50% of post-dedupe results.
+- **OBSERVABILITY-01** — Phase 4 trigger conditions assessment (Grafana/Loki/tracing) once production telemetry demand materializes.
+### Out of Scope (still valid post-v0.2)
 
 - **Scraping directo de MercadoLibre** (cualquier `*.mercadolibre.*` endpoint) — confirmed by Phase 1 spike: IP-blocked sin proxy residencial; MELI catálogo sale vía Google con `+mercadolibre`. WR-01 (Phase 3.1) hardened guard con tldextract.registered_domain match.
 - **Proxy residencial / mobile / IP rotation** — costo + fricción no justificados a este scope; revisit only if Phase 5 trigger fires.
@@ -161,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-06 — Phase 0.2.5 (carried tech debt) shipped; TECHDEBT-01..04 all SATISFIED; suite 124/2 with 0 warnings under always-on DeprecationWarning gate*
+*Last updated: 2026-06-06 — Milestone v0.2 shipped; 4 phases + 11 plans, 17/17 active reqs SATISFIED (2 cancelled per no-paid-services rule); suite 124/2 with 0 warnings*

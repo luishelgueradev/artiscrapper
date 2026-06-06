@@ -1,5 +1,48 @@
 # Milestones
 
+## v0.2 Paridad Visual + Robustez del Parser (Shipped: 2026-06-06)
+
+**Phases shipped:** 4 of 5 planned (0.2.1, 0.2.2, 0.2.3, 0.2.5; 0.2.4 cancelled)
+**Plans shipped:** 11 (2 + 3 + 2 + 4)
+**Total commits:** 75
+**Timeline:** 2026-06-05 → 2026-06-06 (2 days wall-clock)
+**Project LOC:** ~11,408 lines tracked Python (src/ + tests/ + scripts/), +10,241 / -191 net delta over v0.2
+**Test suite:** 113 → 126 (+13 net new tests; 124 passed / 2 skipped / **0 warnings** at close)
+**Cancelled:** Phase 0.2.4 (SerpAPI Ground-Truth Spike) — violates the standing project constraint "no paid services of any kind" persisted as `feedback_no_paid_services` standing rule.
+
+### Key Accomplishments
+
+1. **Parser visual parity (Phase 0.2.1)** — Applied the 3 surgical patches from the parser-visual-parity report. Switched browser `wait_until` for Shopping panel render, added `_extract_pla_unit()` aditivo al cascade, closed the `$410.420,311001` price-regex bug (`,DD` cierre obligatorio). Empirically validated **+207% URLs reales** + **+74% productos con precio** across 5 saturated commercial queries (electro / ropa / libro / electrónica / deporte). Endpoint `GET /admin/parity/{query}` shipped with 2 minimal Prometheus gauges.
+
+2. **Continuous parity harness (Phase 0.2.2)** — Canonical 12-query dataset (6 verticals × 2 specificity levels) in `tests/fixtures/parity-dataset.yaml`. 3 Prometheus gauges (`parity_coverage_pct{query}`, `parity_pla_units_missed{query}`, `parity_url_synthetic_ratio{query}`). 1/N async sample on the hot path (p99 overhead <50ms measured). GitHub Actions nightly that fails CI at <75% avg coverage. 3 Prometheus alert rules (Warn @75%>30min + Fail @50%>5min).
+
+3. **Page 2 pagination (Phase 0.2.3)** — `build_serp_url(page=N)` with `&start=10*(N-1)`, `settings.SEARCH_FETCH_PAGES` (default 2, validated [1,3], env-overridable as a 1-flip rollback path). `POST /search` loops N×2 fetches in `asyncio.gather`. 2 frozen page-2 fixtures (termotanque + zapatillas) + 4 integration tests pinning the 4-fetch flow, dedupe-across-pages, and the rollback to single-page. Empirical gain measured live on saturated queries: **+39% candidate volume** (271 → 376 across 5 queries; 4 of 5 show 20-69% gain). UAT verified 19/19 calls succeeded post-fix.
+
+4. **v0.2.3 stability hardening (issue #1 + 3 Gap fixes)** — Browser singleton was dying under N×2 sustained pressure due to `wait_until="load"` timeout cascade (issue #1). Fixed by switching to `wait_until="domcontentloaded"` + best-effort `wait_for_selector("div.pla-unit", state="attached", timeout=2_500)`. Additional Gap fixes: `compose.yml` env passthrough for `SEARCH_FETCH_PAGES` (Gap A — the rollback knob was a no-op pre-fix), honest `google_fetches` accounting on every non-success Metadata path including cache_hit / 503 / exception / block_detected (Gap C). Post-fix: 14 consecutive `/search` calls with 0 browser deaths; `block_detected_total{sorry_redirect}` now correctly surfaces real Google blocks that previously hid behind `TargetClosedError`. Footgun test added that greps `page.goto(.*wait_until="load")` to prevent regression.
+
+5. **Project constraint locked in code + memory: "no paid services of any kind"** — Phase 0.2.4 (SerpAPI Ground-Truth Spike) cancelled the moment SerpAPI's pricing was presented. Two standing rules persisted to agent memory: `feedback_no_paid_services` (never propose paid SaaS dependencies — no SerpAPI, Bright Data, Oxylabs, OpenAI cloud, Sentry tier paid, observability SaaS, etc.) + `feedback_browser_rendered_ground_truth` (the only valid ground truth for artiscrapper is what the explorer renders with price + URL — if the render breaks, fix the render, don't change the source). ROADMAP / REQUIREMENTS / PROJECT.md updated to reflect both.
+
+6. **Carried tech debt v0.1 closed (Phase 0.2.5)** — `tldextract` `.registered_domain` → `.top_domain_under_public_suffix` rename at the single call site (tldextract 6.x does NOT exist on PyPI; the deprecation warning live in 5.3.1 was the actual root cause). FastAPI `default_response_class=ORJSONResponse` fully removed (Pydantic-Rust default is the fast path per PR #14964). `httpx2==2.3.0` added as dev dep (Starlette's testclient auto-detects) + `filterwarnings = ["error::DeprecationWarning"]` always-on in `pyproject.toml` (gate is now the default, not opt-in). `scripts/spike/` ruff-zero via source rename `l → line` (5 sites split 2/3 across two files) + dead-assignment cleanup — NO per-file-ignores, NO `# noqa` shortcuts (preserves regression lint coverage if any spike is revived). Suite went 1 → **0 warnings** at close.
+
+### Key Decisions (carried into PROJECT.md)
+
+- **The browser is the only ground truth.** Cloak/Playwright rendering with price + URL is the contract; if it breaks we fix the render, never switch sources. Codified by Phase 0.2.4 cancellation + the two `feedback_*` standing memories.
+- **No paid services.** Hard project constraint. Any future suggestion that introduces recurring SaaS cost is out of scope without discussion.
+- **`wait_until="load"` is a foot-gun under concurrency.** Phase 0.2.1 chose it for Shopping panel render; Phase 0.2.3 N×2 exposed the fragility; phase-end fix is `domcontentloaded` + best-effort `wait_for_selector("div.pla-unit")`. Footgun test pins the lesson.
+- **Empirical retest after default-bumps is non-negotiable.** Gap A (compose env passthrough missing) and the `SEARCH_FETCH_PAGES` rollback test caught a runtime/source mismatch that unit tests couldn't see. Standing memory `feedback_empirical_retest_after_default_changes` updated.
+- **Drop pydantic-default leaks on non-success paths.** Gap C: every Metadata construction site now passes `google_fetches=` explicitly (0 for cache_hit / 503 / exception, `len(htmls)` for block_detected). Default flipped 2 → 0. Two regression tests pin the semantics.
+
+### Known Deferred (not blocking close)
+
+- `feedback_compose_build_recreate` known gotcha re-validated: `docker compose build` + `compose up --force-recreate` separately is the only reliable cycle in this dev box; combined `up -d --build` can hang ~25min and may not auto-recreate.
+- WR-01 (rate-limiter `Semaphore(1)` serialization risk) and WR-02 (parity-audit page-1-only) surfaced by code review on Phase 0.2.3 — both advisory follow-ups for future milestones; do NOT trigger today because `GOOGLE_MIN_INTERVAL_S=0` is the deployed default.
+
+### What Did NOT Ship
+
+- **Phase 0.2.4 (SerpAPI Ground-Truth Spike)** — cancelled with strikethrough in ROADMAP, REQUIREMENTS SERPAPI-01/02 marked cancelled. Reason persisted as standing memory. Coverage Check footnote: 19 → 17 active REQ-IDs.
+
+---
+
 ## v0.1 MVP — Google + LLM curator (Shipped: 2026-06-04)
 
 **Phases shipped:** 4 (Phase 1 Spike + Phase 2 MVP + Phase 3 Robustness + Phase 3.1 v0.1 close hygiene)
