@@ -22,7 +22,7 @@
 - [ ] **Phase 0.2.1: Parser Visual Parity** - Aplicar los 3 patches quirúrgicos del reporte (browser wait_until, regex precio v2, extractor pla-unit aditivo); +207% URLs reales medidas
 - [ ] **Phase 0.2.2: Harness de Paridad Visual Continua** - Endpoint /admin/parity completo + 12 queries cross-vertical + métricas Prometheus + CI nightly + alertas
 - [x] **Phase 0.2.3: Paginación Page 2** - Fetch page 2 en paralelo + dedupe por URL canónica pre-LLM + tests fixture-replay (completed 2026-06-05; runtime smoke + gain measurement deferred to operator via 0.2.3-HUMAN-UAT.md)
-- [ ] **Phase 0.2.4: SerpAPI Ground-Truth Spike** - Spike 3 días evaluando SerpAPI como ground-truth del harness (~$1/mes); decisión documentada
+- [~] **Phase 0.2.4: SerpAPI Ground-Truth Spike** - ~~Spike 3 días evaluando SerpAPI como ground-truth del harness (~$1/mes); decisión documentada~~ **CANCELLED 2026-06-06** — viola la constraint del proyecto: no servicios pagos de ningún tipo. La ground truth es lo que el explorador renderiza (Cloak/browser); arreglar el render si se rompe, no cambiar fuente.
 - [ ] **Phase 0.2.5: Carried Tech Debt v0.1** - tldextract 6.x, FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt
 
 ## Phase Details
@@ -83,23 +83,15 @@
 
 **Plans**: TBD
 
-### Phase 0.2.4: SerpAPI Ground-Truth Spike
+### Phase 0.2.4: SerpAPI Ground-Truth Spike — CANCELLED 2026-06-06
 
-**Goal**: Evaluar si SerpAPI / Bright Data SERP API puede actuar como ground-truth del harness continuo a costo ~$1/mes (12 queries × 1/hora), eliminando dependencia de Cloak para auditoría continua y desacoplando monitor del riesgo de CAPTCHA productivo.
+**Status**: CANCELLED — la phase asumía un servicio SaaS pago (SerpAPI ~$1-86/mes según cadencia y vendor) que viola la constraint del proyecto "no servicios pagos de ningún tipo" (ver `feedback_no_paid_services` en memoria del agente). La ground truth del proyecto es lo que el explorador renderiza (Cloak/browser); si se rompe, se arregla el render — no se cambia la fuente.
 
-**Depends on**: 0.2.2 (necesita el dataset canónico de 12 queries para comparar).
+**Original goal (para forensics)**: Evaluar si SerpAPI / Bright Data SERP API puede actuar como ground-truth del harness continuo a costo ~$1/mes (12 queries × 1/hora), eliminando dependencia de Cloak para auditoría continua y desacoplando monitor del riesgo de CAPTCHA productivo.
 
-**Requirements**: SERPAPI-01, SERPAPI-02.
+**Requirements removed**: SERPAPI-01, SERPAPI-02 → cancelled, REQUIREMENTS.md flagged.
 
-**Conditional**: Activar SOLO si el harness 0.2.2 muestra drift inestable O el rate de CAPTCHA productivo sube >5%/día sustained. Si ambas métricas estables, defer indefinidamente.
-
-**Success Criteria**:
-
-  1. Cliente httpx para SerpAPI + adapter mapping respuesta SerpAPI a schema candidates.
-  2. Comparación cuantitativa Cloak vs SerpAPI sobre dataset 12 queries (cobertura, latencia, costo total).
-  3. Decisión final escrita en `.planning/SERPAPI-DECISION-2026-XX-XX.md` con tabla de tradeoffs y recomendación.
-
-**Plans**: TBD
+**If the underlying problem (Cloak drift / CAPTCHA rate) ever materializes**: la respuesta NO es spike-SerpAPI. Opciones browser-based aceptables: (a) endurecer Cloak settings, (b) rotar UA/locale más agresivo, (c) browser pool con recycle más temprano, (d) explorar Playwright directo + stealth libs free, (e) capturar fixtures congeladas adicionales y correr el harness offline contra ellos. Cualquier path debe ser browser-rendered, no API SaaS.
 
 ### Phase 0.2.5: Carried Tech Debt v0.1
 
@@ -131,17 +123,17 @@
 | 0.2.1. Parser Visual Parity | v0.2 | 0/2 (scaffolded) | Planned | - |
 | 0.2.2. Harness Paridad Continua | v0.2 | 0/TBD | Pending | - |
 | 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Complete (runtime UAT pending) | 2026-06-05 |
-| 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/TBD | Conditional | - |
+| 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/0 | CANCELLED (paid service constraint) | 2026-06-06 |
 | 0.2.5. Carried Tech Debt v0.1 | v0.2 | 0/TBD | Pending | - |
 
 ## Coverage Check
 
-v0.2 declara **19 REQ-IDs** mapeados sin ambigüedad a phases (cobertura 100%):
+v0.2 declara **19 REQ-IDs** originales; **17 activos** tras la cancelación de 0.2.4 el 2026-06-06 (SERPAPI-01..02 también cancelados):
 
 - PARITY-01..05 → Phase 0.2.1
 - HARNESS-01..05 → Phase 0.2.2
 - PAGE2-01..03 → Phase 0.2.3
-- SERPAPI-01..02 → Phase 0.2.4
+- ~~SERPAPI-01..02~~ → Phase 0.2.4 **CANCELLED** (paid service constraint)
 - TECHDEBT-01..04 → Phase 0.2.5
 
 Phases 4 + 5 (deferred-by-design de v0.1) continúan sin v0.2 requirements asignados.

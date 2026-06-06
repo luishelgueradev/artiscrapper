@@ -31,8 +31,8 @@
 
 ### SerpAPI Ground-Truth Spike
 
-- [ ] **SERPAPI-01**: spike de 3 días: cliente httpx para SerpAPI + adapter que mapea respuesta SerpAPI al schema de candidates, corrido contra el dataset de 12 queries. Output: comparación tabular vs Cloak parsing.
-- [ ] **SERPAPI-02**: decisión documentada en `.planning/SERPAPI-DECISION-2026-XX-XX.md`: integrar SerpAPI como fuente del harness continuo (~$1/mes para 12 queries × 1/hora) o defer indefinidamente, con justificación basada en los números del spike.
+- [~] ~~**SERPAPI-01**~~: ~~spike de 3 días: cliente httpx para SerpAPI + adapter que mapea respuesta SerpAPI al schema de candidates, corrido contra el dataset de 12 queries. Output: comparación tabular vs Cloak parsing.~~ **CANCELLED 2026-06-06** — viola la constraint del proyecto "no servicios pagos de ningún tipo".
+- [~] ~~**SERPAPI-02**~~: ~~decisión documentada en `.planning/SERPAPI-DECISION-2026-XX-XX.md`: integrar SerpAPI como fuente del harness continuo (~$1/mes para 12 queries × 1/hora) o defer indefinidamente, con justificación basada en los números del spike.~~ **CANCELLED 2026-06-06** — la decisión "no integrar SerpAPI" ya está tomada de forma permanente por constraint de proyecto; no requiere doc dedicado.
 
 ### Carried Tech Debt v0.1
 
@@ -68,7 +68,7 @@ Filled by the roadmap during `/gsd-plan-phase` cycles. Initial mapping (decidido
 | PARITY-01..05 | 0.2.1 | Pending |
 | HARNESS-01..05 | 0.2.2 | Pending |
 | PAGE2-01..03 | 0.2.3 | Complete (2026-06-05; runtime UAT pending) |
-| SERPAPI-01..02 | 0.2.4 (opcional/spike) | Pending |
+| ~~SERPAPI-01..02~~ | 0.2.4 | **CANCELLED 2026-06-06** (paid service constraint — ver feedback_no_paid_services) |
 | TECHDEBT-01..04 | 0.2.5 | Pending |
 
 ---

@@ -26,10 +26,11 @@ Servicio HTTP que dada una query de búsqueda (e.g. `"filtro aire ranger"`) devu
 - **Parser Visual Parity (Estrategia A)** — switch `wait_until="load"` en Cloak (recupera Shopping panel `pla-unit`), extractor `_extract_pla_unit()` aditivo al cascade actual, regex precio v2 (cierra bug `$410.420,311001`). Medición prototipada: +61% candidates, +207% URLs reales, +74% precios.
 - **Harness de paridad visual continua** — endpoint `GET /admin/parity/{query}` autenticado, dataset canónico de 12 queries cross-vertical, métricas Prometheus (`parity_coverage_pct`, `parity_pla_units_missed`, `parity_url_synthetic_ratio`), CI nightly que falla a coverage <75%.
 - **Paginación page 2** — fetchar `&start=10` en paralelo con page 1, dedupe por URL canónica antes del LLM curator. Expected gain: queries que ya saturan a 30 pla-units en page 1 (zapatillas, termotanque) ganan ~10-20 organic adicionales en page 2.
-- **SerpAPI como ground-truth opcional** — spike de 3 días que evalúa SerpAPI/Bright Data como fuente de ground-truth para el harness continuo (~$1/mes para 12 queries × 1/hora). Habilita medir drift sin cargar el VPS con tráfico de auditoría.
+- ~~**SerpAPI como ground-truth opcional**~~ — **CANCELLED 2026-06-06**: la phase 0.2.4 asumía servicio SaaS pago que viola la constraint del proyecto. Ground truth = lo que el explorador renderiza.
 - **Carried tech debt v0.1** — tldextract 5.3.1 → 6.x (rename `.registered_domain` → `.top_domain_under_public_suffix`), FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt.
 
 **Out of scope explícito v0.2:**
+- **Servicios pagos de cualquier tipo** — SerpAPI, Bright Data, Oxylabs, ScraperAPI, OpenAI cloud, Sentry tier paid, observability SaaS, etc. Constraint hard del proyecto (2026-06-06). La ground truth válida es lo que el explorador renderiza (Cloak / Playwright / browser-rendered); si el render se rompe, se arregla el render, no se cambia la fuente.
 - **Estrategia B (DOM-driven browser persistente)** — viola D8 invariant; el reporte cierra que las URLs reales del carousel solo son recuperables con JS-render adicional + clic simulado, costo arquitectónico no justificado.
 - **Resolución de URLs reales del carousel** — los 30 carousel items por query siguen con URL sintética `google.com/search?q=Title+site:Store`. Es lo mejor sin Estrategia B y el reporte demuestra que sigue siendo accionable para el consumidor.
 - **Phases 4-5 deferred-by-design** — Phase 4 (production-ops, Grafana/Loki) y Phase 5 (per-supplier adapters, residential proxy, SSE, multi-tenant) siguen gated en sus triggers originales. v0.2 NO los activa.
@@ -160,4 +161,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-05 — Phase 0.2.3 (Paginación Page 2) shipped; PAGE2-01/02/03 satisfied; runtime smoke deferred to operator UAT*
+*Last updated: 2026-06-06 — Phase 0.2.4 (SerpAPI spike) cancelled (paid-service constraint); v0.2 active reqs reduced 19 → 17; next phase 0.2.5 (carried tech debt)*

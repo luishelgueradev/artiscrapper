@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: Paridad Visual + Robustez del Parser
-status: Phase 0.2.3 complete (runtime UAT pending)
-stopped_at: Phase 0.2.3 closed 2026-06-05 — code-review 0 critical / 5 warnings / 6 info (advisory follow-ups WR-01 rate-limiter serialization + WR-02 parity audit page-1-only); verifier 11/11 must-haves green; 3 runtime smoke items deferred to operator via 0.2.3-HUMAN-UAT.md (CAPTCHA-rate, gain on 5 saturated queries, live google_fetches=4). Suite 121 passed / 2 skipped (+8 vs pre-phase). Next: 0.2.4 SerpAPI spike OR 0.2.5 tech debt.
+status: Phase 0.2.3 closed (UAT pass + 3 gap fixes shipped); Phase 0.2.4 CANCELLED
+stopped_at: Phase 0.2.3 fully closed 2026-06-06 — UAT all 3 items pass + Gap A/B/C fixes shipped + live rerun 19/19 success + issue #1 resolved. Suite 124 passed / 2 skipped. Phase 0.2.4 (SerpAPI spike) CANCELLED 2026-06-06 — viola la constraint "no paid services" del proyecto (memoria feedback_no_paid_services). SERPAPI-01/02 removed; v0.2 active reqs 19 → 17. Next: 0.2.5 carried tech debt (no spending, code cleanup only).
 last_updated: "2026-06-05T20:38:51.877Z"
-last_activity: 2026-06-05 — Phase 0.2.3 closed (verified, runtime UAT pending)
+last_activity: 2026-06-06 — Phase 0.2.4 cancelled; 0.2.5 next
 progress:
   total_phases: 0
   completed_phases: 0
@@ -22,10 +22,10 @@ progress:
 
 ## Current Position
 
-Phase: 0.2.3 Paginación Page 2 — Complete
-Plan: 01 + 02 complete (2/2)
-Status: Phase complete; runtime UAT (0.2.3-HUMAN-UAT.md) pending operator smoke
-Last activity: 2026-06-05 — Phase 0.2.3 closed (verifier 11/11 green, code-review 0 critical)
+Phase: 0.2.5 Carried Tech Debt (next; 0.2.4 cancelled 2026-06-06)
+Plan: —
+Status: Awaiting plan-phase for 0.2.5 (tldextract 6.x, ORJSONResponse cleanup, httpx2 migration, scripts/spike ruff debt)
+Last activity: 2026-06-06 — Phase 0.2.4 cancelled (paid-service constraint); standing rules persisted
 
 ## Recent Decisions
 
