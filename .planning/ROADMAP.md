@@ -95,7 +95,7 @@
 
 ### Phase 0.2.5: Carried Tech Debt v0.1
 
-**Goal**: Cerrar los 4 ítems de tech debt arrastrados desde v0.1 antes de que se acumule más en v0.3+.
+**Goal**: Cerrar los 4 ítems de tech debt arrastrados desde v0.1 antes de que se acumule más en v0.3+. Reality check (2026-06-06 research): tldextract 6.x NO existe aún en PyPI (latest es 5.3.1) — el "bump" es realmente el rename `.registered_domain` → `.top_domain_under_public_suffix` en `visit.py:364`. La httpx2 migration es trivial (starlette ya hace `try: import httpx2; except: import httpx` internamente; instalar como dev dep flipea el transport sin editar tests). ORJSONResponse cleanup = remoción full (Pydantic-Rust serializer es el fast path nuevo). scripts/spike: 39 errors ruff, 28 auto-fixable, 11 residuo via source-rename `l → line` + drop dead F841.
 
 **Depends on**: Ninguna — corre en paralelo con cualquier phase.
 
@@ -108,7 +108,12 @@
   3. httpx2 test migration: `pytest -q -W error::DeprecationWarning -m "not slow"` exits 0.
   4. scripts/spike/ ruff clean: `ruff check scripts/spike/` exits 0 sin warnings.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+  - [ ] 0.2.5-01-PLAN.md — TECHDEBT-01 — tldextract rename `.registered_domain` → `.top_domain_under_public_suffix` en visit.py:364 + comentario defensivo en metrics.py + docstring update en tests/test_visit.py (Wave 1, autonomous)
+  - [ ] 0.2.5-02-PLAN.md — TECHDEBT-02 — Remover `from fastapi.responses import ORJSONResponse` (line 28) + `default_response_class=ORJSONResponse,` (line 245) en main.py; relegate response serialization to Pydantic-Rust default fast path (Wave 1, autonomous)
+  - [ ] 0.2.5-03-PLAN.md — TECHDEBT-03 — slopcheck-clearance checkpoint para httpx2 (3 evidence channels) + add `httpx2==2.3.0` dev dep + `filterwarnings = ["error::DeprecationWarning"]` always-on en pyproject.toml + uv.lock regeneration (Wave 2, depends on 01+02; has blocking-human checkpoint)
+  - [ ] 0.2.5-04-PLAN.md — TECHDEBT-04 — `ruff check --fix scripts/spike/` (auto-resolve 28) + source rename `l → line` (5 E741) + LHS-drop dead assignments (6 F841); NO per-file-ignores, NO exclude, NO noqa shortcuts (Wave 1, autonomous)
 
 ## Progress
 
@@ -124,7 +129,7 @@
 | 0.2.2. Harness Paridad Continua | v0.2 | 0/TBD | Pending | - |
 | 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Complete (runtime UAT pending) | 2026-06-05 |
 | 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/0 | CANCELLED (paid service constraint) | 2026-06-06 |
-| 0.2.5. Carried Tech Debt v0.1 | v0.2 | 0/TBD | Pending | - |
+| 0.2.5. Carried Tech Debt v0.1 | v0.2 | 0/4 | Planned | - |
 
 ## Coverage Check
 
