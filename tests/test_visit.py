@@ -202,7 +202,7 @@ async def test_skip_if_price_present():
 
 async def test_meli_guard_no_false_positive_on_notmercadolibre():
     """
-    WR-01 regression (Phase 3.1): tldextract.registered_domain match
+    WR-01 regression (Phase 3.1): tldextract.top_domain_under_public_suffix match
     must NOT fire on notmercadolibre.com. The pre-Phase-3.1 substring
     check `"mercadolibre." in netloc` would have falsely returned
     meli_skip for this URL, silently dropping a legitimate result.

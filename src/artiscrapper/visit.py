@@ -34,7 +34,7 @@ PER_HOST_CAP = 2
 # The pre-fix substring containment check on `netloc` over-matched
 # `notmercadolibre.com`, `mercadoliberia.com`, etc. — silently dropping
 # legitimate results (visit_failed inflation). tldextract is
-# public-suffix-aware and a `registered_domain` comparison eliminates
+# public-suffix-aware and a `top_domain_under_public_suffix` comparison eliminates
 # the false positive.
 #
 # Sister registry: freshness.MELI_HOSTS (full hostnames including
@@ -357,11 +357,11 @@ async def visit_candidates(
 
         # VISIT-08 + WR-01 (Phase 3.1): suffix-aware MELI match.
         # Uses tldextract (pinned at 5.3.1, already used in metrics.py) to
-        # compare on registered_domain — public-suffix-aware. Eliminates
+        # compare on top_domain_under_public_suffix — public-suffix-aware. Eliminates
         # false positives on notmercadolibre.com, mercadoliberia.com, etc.
         # This is a security control (architecture-level), not optional.
         ext = tldextract.extract(url)
-        if ext.registered_domain.lower() in _MELI_REGISTERED_DOMAINS:
+        if ext.top_domain_under_public_suffix.lower() in _MELI_REGISTERED_DOMAINS:
             candidate["flags"] = candidate.get("flags", []) + ["meli_skip"]
             return candidate
 
