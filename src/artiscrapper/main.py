@@ -15,8 +15,8 @@ import asyncio
 import random
 import re
 import time
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import aiosqlite
 import httpx
@@ -25,7 +25,6 @@ import structlog
 from asgi_correlation_id import CorrelationIdMiddleware
 from cloakbrowser import launch_async  # Phase 1 confirmed: this is the correct import path
 from fastapi import Depends, FastAPI, Request, Response
-from fastapi.responses import ORJSONResponse
 from prometheus_client import make_asgi_app
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -242,7 +241,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    default_response_class=ORJSONResponse,
     title="artiscrapper",
     version=settings.VERSION,
 )
