@@ -23,7 +23,7 @@
 - [ ] **Phase 0.2.2: Harness de Paridad Visual Continua** - Endpoint /admin/parity completo + 12 queries cross-vertical + métricas Prometheus + CI nightly + alertas
 - [x] **Phase 0.2.3: Paginación Page 2** - Fetch page 2 en paralelo + dedupe por URL canónica pre-LLM + tests fixture-replay (completed 2026-06-05; runtime smoke + gain measurement deferred to operator via 0.2.3-HUMAN-UAT.md)
 - [~] **Phase 0.2.4: SerpAPI Ground-Truth Spike** - ~~Spike 3 días evaluando SerpAPI como ground-truth del harness (~$1/mes); decisión documentada~~ **CANCELLED 2026-06-06** — viola la constraint del proyecto: no servicios pagos de ningún tipo. La ground truth es lo que el explorador renderiza (Cloak/browser); arreglar el render si se rompe, no cambiar fuente.
-- [ ] **Phase 0.2.5: Carried Tech Debt v0.1** - tldextract 6.x, FastAPI ORJSONResponse cleanup, httpx2 test migration, scripts/spike/ ruff debt
+- [x] **Phase 0.2.5: Carried Tech Debt v0.1** - tldextract `.registered_domain` → `.top_domain_under_public_suffix` rename (tldextract 6.x doesn't exist on PyPI; deprecation warning was the actual root cause), FastAPI ORJSONResponse fully removed, httpx2 dev dep + always-on `error::DeprecationWarning` filter in pyproject, scripts/spike/ ruff-zero via source rename (no per-file-ignores). Suite 124 passed / 2 skipped / **0 warnings** under both implicit and explicit DeprecationWarning gates (completed 2026-06-06).
 
 ## Phase Details
 
@@ -129,7 +129,7 @@
 | 0.2.2. Harness Paridad Continua | v0.2 | 0/TBD | Pending | - |
 | 0.2.3. Paginación Page 2 | v0.2 | 2/2 | Complete (runtime UAT pending) | 2026-06-05 |
 | 0.2.4. SerpAPI Ground-Truth Spike | v0.2 | 0/0 | CANCELLED (paid service constraint) | 2026-06-06 |
-| 0.2.5. Carried Tech Debt v0.1 | v0.2 | 0/4 | Planned | - |
+| 0.2.5. Carried Tech Debt v0.1 | v0.2 | 4/4 | Complete | 2026-06-06 |
 
 ## Coverage Check
 

@@ -36,10 +36,10 @@
 
 ### Carried Tech Debt v0.1
 
-- [ ] **TECHDEBT-01**: tldextract 5.3.1 → 6.x — rename `.registered_domain` → `.top_domain_under_public_suffix` en `src/artiscrapper/visit.py` y donde sea que lo use; tests existentes (WR-01 MELI guard) siguen pasando.
-- [ ] **TECHDEBT-02**: FastAPI ORJSONResponse cleanup — auditar uso, decidir si default global vs explícito por endpoint, documentar.
-- [ ] **TECHDEBT-03**: httpx2 test migration — actualizar tests que usen API httpx vieja (deprecation warnings clean).
-- [ ] **TECHDEBT-04**: scripts/spike/ ruff debt — limpiar warnings ruff en scripts/spike/, decidir si archivar o mantener bajo lint.
+- [x] **TECHDEBT-01**: tldextract `.registered_domain` → `.top_domain_under_public_suffix` rename at the single call site `src/artiscrapper/visit.py:364` + defensive `# NOTE:` comment in `metrics.py:143` (the package's 6.x doesn't exist on PyPI yet; the deprecation warning live in 5.3.1 was the actual root cause). WR-01 MELI guard tests pass byte-identically. _(closed 2026-06-06, phase 0.2.5 plan 01)_
+- [x] **TECHDEBT-02**: FastAPI ORJSONResponse fully removed (import at `main.py:28` + `default_response_class=ORJSONResponse` kwarg at `main.py:245`) — relies on FastAPI's Pydantic-Rust native serializer (PR #14964). Runtime confirmed: `app.router.default_response_class` resolves to `JSONResponse`. _(closed 2026-06-06, phase 0.2.5 plan 02)_
+- [x] **TECHDEBT-03**: httpx2 2.3.0 added as dev dep + `filterwarnings = ["error::DeprecationWarning"]` always-on in `pyproject.toml [tool.pytest.ini_options]`. Starlette auto-detects httpx2 (testclient.py imports by name). Zero `tests/` edits required. Suite 124/2 with **0 warnings**. _(closed 2026-06-06, phase 0.2.5 plan 03)_
+- [x] **TECHDEBT-04**: `scripts/spike/` ruff-zero — 41 lint violations resolved via `ruff --fix` + source rename `l → line` (2 sites in `05_router_probe.py`, 3 in `09_label_cards.py`) + dead `results =` cleanup. NO per-file-ignores, NO `# noqa` shortcuts (preserves regression lint coverage). _(closed 2026-06-06, phase 0.2.5 plan 04)_
 
 ## Future Requirements (post-v0.2)
 
@@ -69,7 +69,7 @@ Filled by the roadmap during `/gsd-plan-phase` cycles. Initial mapping (decidido
 | HARNESS-01..05 | 0.2.2 | Pending |
 | PAGE2-01..03 | 0.2.3 | Complete (2026-06-05; runtime UAT pending) |
 | ~~SERPAPI-01..02~~ | 0.2.4 | **CANCELLED 2026-06-06** (paid service constraint — ver feedback_no_paid_services) |
-| TECHDEBT-01..04 | 0.2.5 | Pending |
+| TECHDEBT-01..04 | 0.2.5 | Complete (2026-06-06) |
 
 ---
 

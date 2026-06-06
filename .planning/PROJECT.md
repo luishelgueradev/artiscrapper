@@ -71,10 +71,10 @@ Definido 2026-06-05 por evidencia empírica del reporte `.planning/PARSER-VISUAL
 - ✓ **PAGE2-03** — Tests fixture-replay sobre page 2 (2 fixtures: organic-heavy + pla-heavy) — v0.2.3 (2026-06-05)
 - **SERPAPI-01** — Spike SerpAPI (3 días): cliente httpx + comparación con Cloak output sobre 12 queries
 - **SERPAPI-02** — Decisión documentada: integrar SerpAPI al harness continuo (~$1/mes) o defer indefinidamente
-- **TECHDEBT-01** — tldextract 5.3.1 → 6.x (rename `.registered_domain` → `.top_domain_under_public_suffix`)
-- **TECHDEBT-02** — FastAPI ORJSONResponse cleanup
-- **TECHDEBT-03** — httpx2 test migration
-- **TECHDEBT-04** — scripts/spike/ ruff debt cleanup
+- ✓ **TECHDEBT-01** — tldextract `.registered_domain` → `.top_domain_under_public_suffix` rename (6.x doesn't exist on PyPI yet) — v0.2.5 (2026-06-06)
+- ✓ **TECHDEBT-02** — FastAPI ORJSONResponse fully removed (Pydantic-Rust default is the fast path) — v0.2.5 (2026-06-06)
+- ✓ **TECHDEBT-03** — httpx2 2.3.0 dev dep + always-on `error::DeprecationWarning` gate in pyproject — v0.2.5 (2026-06-06)
+- ✓ **TECHDEBT-04** — `scripts/spike/` ruff-zero via source rename `l → line` (no per-file-ignores) — v0.2.5 (2026-06-06)
 
 ### Out of Scope (still valid post-v0.1)
 
@@ -161,4 +161,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-06 — Phase 0.2.4 (SerpAPI spike) cancelled (paid-service constraint); v0.2 active reqs reduced 19 → 17; next phase 0.2.5 (carried tech debt)*
+*Last updated: 2026-06-06 — Phase 0.2.5 (carried tech debt) shipped; TECHDEBT-01..04 all SATISFIED; suite 124/2 with 0 warnings under always-on DeprecationWarning gate*
