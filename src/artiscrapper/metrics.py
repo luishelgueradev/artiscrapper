@@ -140,6 +140,7 @@ metrics = Metrics()  # process-singleton (safe with --workers 1)
 # ── Bridge wrappers (D-11 — every Phase 2 call site routes through these) ──
 
 
+# NOTE: uses ext.domain + ext.suffix directly (not the public-suffix-aware sister API top_domain_under_public_suffix); intentional — _host_for_metric labels a Prometheus metric, not a security guard. Do NOT introduce .registered_domain here (deprecated in tldextract 5.3.0).
 def _host_for_metric(url_or_host: str) -> str:
     """
     Normalize a URL or host to TLD+1 to cap visit_failed cardinality at
