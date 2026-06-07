@@ -42,8 +42,8 @@ def _parse_api_keys() -> set[str]:
 
 
 # Module-load cache — D-01 says rotation requires container restart.
-# Re-parsing on every request would be wasted work for the single-tenant
-# Sánchez Repuestos deploy.
+# Re-parsing on every request would be wasted work for low-tenant deploys
+# (typical: 1-2 keys per consumer).
 API_KEYS: set[str] = _parse_api_keys()
 
 
@@ -67,8 +67,8 @@ def verify_api_key(request: Request) -> str:
     # CR-01: constant-time comparison against every configured key. `key in
     # API_KEYS` falls back to non-constant-time str.__eq__ once the hash
     # bucket matches, leaking per-byte equality timing. Iterating the full
-    # set on every call is fine — the set is tiny (1-2 keys for the
-    # Sánchez Repuestos deploy) so the cost is negligible.
+    # set on every call is fine — the set is tiny (1-2 keys typical) so
+    # the cost is negligible.
     for valid in API_KEYS:
         if hmac.compare_digest(key, valid):
             return key

@@ -2,13 +2,15 @@
 
 ## What This Is
 
-Servicio HTTP que dada una query de búsqueda (e.g. `"filtro aire ranger"`) devuelve una lista curada de productos comerciales que reflejan lo que una persona vería buscando en Google manualmente, enriquecidos con precio, validación de destino vivo, y filtrados por un LLM local para descartar blogs/wikis/contenido irrelevante. Cliente único: **Sánchez Repuestos** (taller / casa de repuestos AR) — alimenta su app interna de gestión de productos y pedidos + workflows n8n.
+Servicio HTTP genérico de búsqueda de artículos comerciales: dada una query (e.g. `"filtro aire ranger"`, `"zapatillas nike air max 42"`, `"termotanque rheem 80 litros"`), devuelve una lista curada de productos que reflejan lo que una persona vería buscando en Google manualmente, enriquecidos con precio, validación de destino vivo, y filtrados por un LLM local para descartar blogs/wikis/contenido irrelevante. **Reutilizable across consumidores y verticales** — no acoplado a ningún cliente, taller, o vertical específico. Diseñado para que cualquier app que necesite "lo que un humano ve en Google con precios y URLs accionables" pueda consumirlo vía un único endpoint.
 
-**Shipped en v0.1 (2026-06-04):** servicio funcional 1-container production-ready con `/search`, `/health`, `/metrics`, X-API-Key auth, slowapi rate-limit (Pattern B settings-source-of-truth), challenge-backoff, degraded-mode fallback, fixture-replay integration suite (≥85% catalog price extraction empirically validated at 100%), Sentry-ready (env-gated).
+**Shipped en v0.1 (2026-06-04):** servicio funcional 1-container production-ready con `/search`, `/health`, `/metrics`, X-API-Key auth, slowapi rate-limit (Pattern B settings-source-of-truth), challenge-backoff, degraded-mode fallback, fixture-replay integration suite, Sentry-ready (env-gated).
+
+**Shipped en v0.2 (2026-06-06):** parser visual parity (+207% URLs reales medidas), continuous parity harness (12-query dataset + 3 Prometheus gauges + CI nightly + alerts), page-2 pagination (+39% candidate volume measured live), browser stability hardening (issue #1 + 3 Gap fixes), carried tech debt closure (tldextract rename, ORJSONResponse removal, httpx2 + always-on `error::DeprecationWarning` filter, scripts/spike ruff-zero).
 
 ## Core Value
 
-**Si solo una cosa tiene que funcionar bien**: el endpoint `POST /search` recibe una query con `X-API-Key`, dispara 2 fetches a Google (`q` y `q +mercadolibre`), filtra con LLM local para quedarse solo con productos comprables, valida live + precio visitando los survivors cuando hace falta, y devuelve un JSON ordenado por relevancia. El consumidor recibe **productos que existen, con precio, link y procedencia clara** — empíricamente validado en v0.1 contra queries reales `pelota playera quico` y `filtro aceite ford focus`.
+**Si solo una cosa tiene que funcionar bien**: el endpoint `POST /search` recibe una query con `X-API-Key`, dispara N×2 fetches a Google (default N=2 → page 1 + page 2, ambos en `q` y `q +mercadolibre`), filtra con LLM local para quedarse solo con productos comprables, valida live + precio visitando los survivors cuando hace falta, y devuelve un JSON ordenado por relevancia. El consumidor recibe **productos que existen, con precio, link y procedencia clara**, accionables across cualquier vertical commercial (auto-parts, electro, ropa, libros, deporte, electrónica) — empíricamente validado en v0.2 a través de 12 queries canónicas cross-vertical.
 
 <details>
 <summary>📦 Prior shipped state (v0.1 — 2026-06-04, archived)</summary>
@@ -92,7 +94,7 @@ Scope to be defined via `/gsd:new-milestone`. Likely v0.3 candidates surfaced by
 - **Async + SSE en /search** — sync HTTP cubre el SLA (PRD §10); Phase 5 candidate only if latency trigger fires.
 - **Workers / RQ / Redis / message queues** — sync HTTP cubre el caso de uso.
 - **Postgres + Alembic** — sqlite local cubre el cache; sin datos relacionales.
-- **Multi-tenant auth** — un solo cliente (Sánchez); X-API-Key estático alcanza hasta que se onboardee un segundo consumidor.
+- **Multi-tenant auth** — X-API-Key estático con frozenset module-load alcanza para 1-5 consumidores; revisitar cuando aparezca el N+1.
 - **Marketplaces que no aparecen en Google** (eBay AR, Tiendanube específicas) — Google es el descubridor.
 - **Partner Program MELI** — investigado, deferido indefinidamente.
 - **uvloop** — banned (D6 foot-gun, Cloak subprocess incompatibility, CI grep assertion enforces).
@@ -102,7 +104,7 @@ Scope to be defined via `/gsd:new-milestone`. Likely v0.3 candidates surfaced by
 
 - **Successor of**: versión 1 de artiscrapper (descartada 2026-06-01, git history wiped). v1 tenía ~15.000 LOC, 5 containers Docker, 6 fases roadmap, multi-source orchestrator con browser-pool desacoplado. Entregaba ~7 productos por query sin precio confiable. v0.1 entrega el mismo dominio en ~5,876 LOC, 1 container, 4 fases, con 55/55 reqs SATISFIED y empirical validation contra queries reales.
 - **Knowledge preservado del v1** (ahora en código v0.1): parser de Google SERP (`div.tF2Cxc`, `div.Ez5pwe`, h3-anchored fallback), extracción precio AR (`$\xa018.032,30` → Decimal), junk-domain blocklist (youtube/fandom/wiki/reddit/quora), setup Cloakbrowser para Google con `pws=0&safe=off`.
-- **Cliente operacional**: Sánchez Repuestos ya tiene app de gestión + workflows n8n en producción. v0.1 se enchufa como dependencia HTTP. Degradación graceful via `metadata.llm_degraded=true` (LLM-06) y 503+Retry-After (ChallengeBackoff) si Google rotea challenges.
+- **Modelo de consumo**: cualquier app (n8n workflow, backend de catalog browser, etc.) que necesite "lo que un humano ve en Google con precios + URLs accionables" puede enchufar artiscrapper como dependencia HTTP. Degradación graceful via `metadata.llm_degraded=true` (LLM-06) y 503+Retry-After (ChallengeBackoff) si Google rotea challenges. No-prod-yet — pre-MVP shape, consumidores actuales = dev/test.
 - **LLM router local**: `local-llms-router` corriendo en el mismo VPS (mismo proyecto Luis); reutilizado vía OpenAI-compat HTTP, no agregar deps de modelo.
 - **Volumen real esperado**: 500-2000 queries/día. Phase 1 spike confirmó la viabilidad operacional.
 - **Owner técnico**: Luis Helguera (Objetiva.com.ar).

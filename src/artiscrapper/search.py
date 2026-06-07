@@ -551,7 +551,7 @@ KNOWN_STORES: frozenset[str] = frozenset(
         "compraonline.com.ar",
         "casaalbano.com.ar",
         "naldo.com.ar",
-        # AR auto-parts specialists (relevant to Sánchez Repuestos)
+        # AR auto-parts specialists (auto vertical coverage)
         "frogautopartes.com.ar",
     }
 )
