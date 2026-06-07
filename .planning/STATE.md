@@ -22,10 +22,10 @@ progress:
 
 ## Current Position
 
-Phase: Milestone v0.2 complete
+Phase: v0.3 scaffolded (2026-06-07) — Phase 0.3.1 next
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-06 — Milestone v0.2 completed and archived
+Status: Milestone scope locked autonomously per user direction (autonomous-overnight). Phase dirs created empty; REQUIREMENTS.md fresh with 8 REQ-IDs (HYGIENE-01..03 + CACHE-PAGE-01..03 + CAROUSEL-01..02). Execution NOT started — context window hit 65% during scaffold setup, paused before opening any phase to avoid mid-execution OOM. Resume tomorrow with: `/clear` then `/gsd:plan-phase 0.3.1`.
+Last activity: 2026-06-07 — v0.3 scaffolded (3 phases, 8 REQ-IDs, scope locked)
 
 ## Recent Decisions
 

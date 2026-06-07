@@ -4,7 +4,7 @@
 
 - ✅ **v0.1 MVP — Google + LLM curator** — Phases 1, 2, 3, 3.1 (shipped 2026-06-04, archived `.planning/milestones/v0.1-phases/`)
 - ✅ **v0.2 — Paridad Visual + Robustez del Parser** — Phases 0.2.1, 0.2.2, 0.2.3, 0.2.5 shipped + 0.2.4 cancelled (shipped 2026-06-06, archived `.planning/milestones/v0.2-*`)
-- 📋 **v0.3** — next milestone, scope TBD via `/gsd:new-milestone`
+- 🚧 **v0.3 — Consumer-Facing Real URLs + Harness Signal Integrity** — Phases 0.3.1 (hygiene + sleeper bugs) + 0.3.2 (cache page-aware / WR-02) + 0.3.3 (carousel real-URL extraction) (scaffolded 2026-06-07, not started)
 
 ## Phases
 
@@ -32,6 +32,16 @@ See `.planning/milestones/v0.1-ROADMAP.md` for full phase details.
 See `.planning/milestones/v0.2-ROADMAP.md` for full phase details + `.planning/MILESTONES.md` for the shipped summary.
 
 </details>
+
+### 🚧 v0.3 Consumer-Facing Real URLs + Harness Signal Integrity (scaffolded 2026-06-07)
+
+- [ ] **Phase 0.3.1: Hygiene + Sleeper Bugs** - WR-01 cross-field validator (rate-limiter ×N latency cliff), drop orphan `orjson` dep, `/admin/parity` separate rate-limit (5/min/key vs /search's 60), `/health/deep` audit (probe path). Cheap, high-confidence. (~half day)
+- [ ] **Phase 0.3.2: Cache Page-Awareness (WR-02)** - Cache schema persists N HTMLs (page-1 AND page-2+) so `_parity_audit_sample` reads the unionized signal. Today: cache hits silently downgrade HARNESS-05 alert signal by ~50% on recurring queries because only `html_a` is persisted while response carries N×2 candidates. (~1 day)
+- [ ] **Phase 0.3.3: Carousel Real URLs (CAROUSEL-01)** - Recover non-synthetic merchant URLs for the 30 Shopping carousel items per query, respecting D8 invariant (no `launch_persistent_context`). Research path: inline JSON / data-attrs in captured fixtures; `page.evaluate()` for post-render attrs. Acceptance: ≥50% recovery rate OR documented decision why not. (~1-2 days)
+
+**Phase numbering**: skipped 0.3.0 — direct generic-article framing committed as a 1-commit hygiene before scaffold (commit `5dcb471`).
+
+**Out of v0.3 explicit:** /health/deep real-fetch probe, BROWSER_RECYCLE_AFTER empirical tuning, CI nightly alerting (Slack/issue-open) — all gated on production traffic which doesn't exist yet (per user direction 2026-06-07 "esto no esta en produccion real"). Push to v0.4 when there's real signal to measure.
 
 ### 📋 Deferred-by-design (gated, not on any milestone)
 
